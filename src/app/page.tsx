@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import SimpleTable from './component/SimpleTable';
+import SimpleTable from '@/app/component/SimpleTable';
+import Modal from '@/app/component/Modal';
 
 export default function EtfPage() {
 
@@ -42,22 +43,21 @@ export default function EtfPage() {
     return <p>Loading...</p>;
   }
 
-  return (
-    <div>
-      <h1
+  return ( <div>
+      {etfData && etfData.data ? (
+        <><Modal />
+        <h1
         className={`
-          text-2xl
-          font-bold
-          text-gray-800
-          dark:text-gray-200
-          mb-4
-          text-center
-        `}
+            text-2xl
+            font-bold
+            text-gray-800
+            dark:text-gray-200
+            mb-4
+            text-center
+          `}
       >
         Undervalued ETF Data
-      </h1>
-      {etfData && etfData.data ? (
-        <SimpleTable columns={etf_data_columns} data={etfData.data} />
+      </h1><SimpleTable columns={etf_data_columns} data={etfData.data} /></>
       ) : (
         <p>No data available</p>
       )}
