@@ -7,6 +7,7 @@ First, run the development server:
 ```bash
 npm run dev
 
+```
 
 Fetches data from NSE for ETFs, compares the current NAV and LTP and return
 undervalued ETFs and undervalue pct.
