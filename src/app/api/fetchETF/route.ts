@@ -30,7 +30,12 @@ export async function GET() {
     });
 
     const etfData = etfResponse.data.data;
-    const filteredEtfData = etfData.filter((etf: any) => etf.nav && etf.ltP);
+    const filteredEtfData = etfData.filter((etf: any) =>
+      etf.nav &&
+      etf.ltP &&
+      etf.qty &&
+      etf.qty > 100000
+    );
     etfResponse.data.data = filteredEtfData;
     for (const etf of etfResponse.data.data) {
       etf.undervalued_pct = (etf.nav - etf.ltP)/etf.nav * 100;
