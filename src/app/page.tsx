@@ -12,6 +12,7 @@ export default function EtfPage() {
     { key: "companyName", label: "COMPANY NAME" },
     { key: "undervalued_pct", label: "UNDERVALUED PCT" },
     { key: "ltP", label: "LTP" },
+    { key: "inav", label: "INAV" },
     { key: "nav", label: "NAV" },
     { key: "qty", label: "QUANTITY" },
     { key: "open", label: "OPEN" },

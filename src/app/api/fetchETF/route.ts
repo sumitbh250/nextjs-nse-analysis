@@ -29,6 +29,7 @@ export async function GET() {
       },
     });
 
+    // Filter out ETFs with low quantity and calculate undervalued percentage
     const etfData = etfResponse.data.data;
     const filteredEtfData = etfData.filter((etf: any) =>
       etf.nav &&
@@ -37,12 +38,42 @@ export async function GET() {
       etf.qty > 100000
     );
     etfResponse.data.data = filteredEtfData;
-    for (const etf of etfResponse.data.data) {
-      etf.undervalued_pct = (etf.nav - etf.ltP)/etf.nav * 100;
-      etf.undervalued_pct = etf.undervalued_pct.toFixed(2);
-      etf.undervalued = etf.undervalued_pct > 0;
-      etf.companyName = etf.meta.companyName;
-    }
+
+    const fetchEquityQuote = async (etf: any) => {
+      try {
+      const equityQuoteResponse = await axios.get(`https://www.nseindia.com/api/quote-equity?symbol=${etf.symbol}`, {
+        headers: {
+        'User-Agent':
+          `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ` +
+          `(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36`,
+        'Accept': 'application/json, text/plain, */*',
+        'Cookie': cookies.join('; '),
+        },
+      });
+      const equityQuote = equityQuoteResponse.data;
+      if (!equityQuote.priceInfo || !equityQuote.priceInfo.iNavValue) {
+        return null; // Return null if priceInfo or iNavValue is missing
+      }
+
+      const inav = equityQuote.priceInfo.iNavValue;
+
+      return {
+        ...etf,
+        inav,
+        undervalued_pct: ((inav - etf.ltP) / inav * 100).toFixed(2),
+        undervalued: ((inav - etf.ltP) / inav * 100) > 0,
+        companyName: etf.meta.companyName,
+      };
+      } catch {
+      return null; // Return null if there's an error fetching the equity quote
+      }
+    };
+
+    const updatedEtfs = await Promise.all(
+      etfResponse.data.data.map((etf: any) => fetchEquityQuote(etf))
+    );
+
+    etfResponse.data.data = updatedEtfs.filter((etf: any) => etf !== null);
     etfResponse.data.data.sort(
       (a: any, b: any) => b.undervalued_pct - a.undervalued_pct
     );
