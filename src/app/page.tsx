@@ -22,7 +22,7 @@ export default function EtfPage() {
 
   const [etfData, setEtfData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
   async function fetchEtfData() {
     try {
