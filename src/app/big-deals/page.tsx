@@ -24,12 +24,9 @@ export default function BigDealsPage() {
   const [optionType, setOptionType] = useState('bulk_deals');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [selectedRange, setSelectedRange] = useState('1W');
-  const [customFromDate, setCustomFromDate] = useState('');
-  const [customToDate, setCustomToDate] = useState('');
   const [dateFilter, setDateFilter] = useState('1W');
 
-  // Set default dates (last 7 days)
+  // Set default dates (last 7 days) and fetch initial data
   useEffect(() => {
     const today = new Date();
     const lastWeek = new Date(today);
@@ -38,6 +35,13 @@ export default function BigDealsPage() {
     setToDate(formatDateForInput(today));
     setFromDate(formatDateForInput(lastWeek));
   }, []);
+
+  // Auto-fetch data when filters change
+  useEffect(() => {
+    if (fromDate && toDate) {
+      fetchDealsData();
+    }
+  }, [optionType, fromDate, toDate]);
 
   function formatDateForInput(date: Date): string {
     return date.toISOString().split('T')[0];
@@ -60,39 +64,27 @@ export default function BigDealsPage() {
   }
 
   function handleTimeRangeChange(range: string) {
-    setSelectedRange(range);
-    const today = new Date();
-    let startDate = new Date();
+    setDateFilter(range);
 
-    switch (range) {
-      case '1D':
-        startDate = new Date(today);
-        break;
-      case '1W':
-        startDate.setDate(today.getDate() - 7);
-        break;
-      case '1M':
-        startDate.setMonth(today.getMonth() - 1);
-        break;
-      case '3M':
-        startDate.setMonth(today.getMonth() - 3);
-        break;
-      case '6M':
-        startDate.setMonth(today.getMonth() - 6);
-        break;
-      case '1Y':
-        startDate.setFullYear(today.getFullYear() - 1);
-        break;
-      case 'Clear':
-        setFromDate('');
-        setToDate('');
-        return;
-      default:
-        return;
+    if (range === 'Custom') {
+      return; // Let user set custom dates
     }
 
-    setFromDate(formatDateForInput(startDate));
-    setToDate(formatDateForInput(today));
+    if (range === 'Clear') {
+      setDateFilter('1W');
+      range = '1W'; // Reset to 1W after clear
+    }
+
+    const today = new Date();
+    const selectedFilter = dateFilters.find(f => f.label === range);
+
+    if (selectedFilter) {
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - selectedFilter.days);
+
+      setFromDate(formatDateForInput(startDate));
+      setToDate(formatDateForInput(today));
+    }
   }
 
   async function fetchDealsData() {
@@ -131,12 +123,12 @@ export default function BigDealsPage() {
   };
 
   const dateFilters = [
-    { label: '1D', value: '1D' },
-    { label: '1W', value: '1W' },
-    { label: '1M', value: '1M' },
-    { label: '3M', value: '3M' },
-    { label: '6M', value: '6M' },
-    { label: '1Y', value: '1Y' },
+    { label: '1D', days: 1 },
+    { label: '1W', days: 7 },
+    { label: '1M', days: 30 },
+    { label: '3M', days: 90 },
+    { label: '6M', days: 180 },
+    { label: '1Y', days: 365 },
   ];
 
   const fromDisplay = formatDateForDisplay(fromDate);
@@ -184,10 +176,7 @@ export default function BigDealsPage() {
           {dateFilters.map((filter) => (
             <button
               key={filter.label}
-              onClick={() => {
-                setDateFilter(filter.label);
-                handleTimeRangeChange(filter.label);
-              }}
+              onClick={() => handleTimeRangeChange(filter.label)}
               className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
                 dateFilter === filter.label
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
@@ -198,10 +187,7 @@ export default function BigDealsPage() {
             </button>
           ))}
           <button
-            onClick={() => {
-              setDateFilter('Custom');
-              setSelectedRange('Custom');
-            }}
+            onClick={() => handleTimeRangeChange('Custom')}
             className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
               dateFilter === 'Custom'
                 ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
@@ -211,10 +197,7 @@ export default function BigDealsPage() {
             Custom
           </button>
           <button
-            onClick={() => {
-              setDateFilter('1W');
-              handleTimeRangeChange('1W');
-            }}
+            onClick={() => handleTimeRangeChange('Clear')}
             className="px-2 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-all duration-200 shadow-sm"
           >
             Clear
@@ -225,20 +208,14 @@ export default function BigDealsPage() {
               <input
                 type="date"
                 value={fromDate}
-                onChange={(e) => {
-                  setFromDate(e.target.value);
-                  setSelectedRange('Custom');
-                }}
+                onChange={(e) => setFromDate(e.target.value)}
                 className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               />
               <span className="text-xs text-gray-500">to</span>
               <input
                 type="date"
                 value={toDate}
-                onChange={(e) => {
-                  setToDate(e.target.value);
-                  setSelectedRange('Custom');
-                }}
+                onChange={(e) => setToDate(e.target.value)}
                 className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               />
               <button
