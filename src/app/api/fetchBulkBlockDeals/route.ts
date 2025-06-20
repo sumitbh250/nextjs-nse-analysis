@@ -149,11 +149,15 @@ export async function GET(request: Request) {
     if (dealsData && Array.isArray(dealsData)) {
       const uniqueSymbols = [...new Set(dealsData.map((deal: any) => deal.BD_SYMBOL))];
 
-      // Fetch market cap and ask price for all unique symbols
+      // COMMENTED OUT: Fetch market cap and ask price for all unique symbols
+      /*
       const marketDataPromises = uniqueSymbols.map(symbol =>
         fetchMarketCapAndAsk(symbol as string, cookies)
       );
+      */
 
+      // COMMENTED OUT: Market data processing
+      /*
       try {
         const marketDataResults = await Promise.all(marketDataPromises);
 
@@ -193,6 +197,17 @@ export async function GET(request: Request) {
         };
         return NextResponse.json(response);
       }
+      */
+
+      // Return data without market cap and ask price for now
+      const response = {
+        data: dealsData,
+        marketCapData: {},
+        askPriceData: {},
+        totalRecords: dealsData.length,
+        dataSource: 'CSV'
+      };
+      return NextResponse.json(response);
     }
 
     // Step 5: Return empty response if no data
