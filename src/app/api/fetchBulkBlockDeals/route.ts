@@ -22,6 +22,53 @@ async function fetchMarketCap(symbol: string, cookies: string[]): Promise<number
   }
 }
 
+function parseCSVToJSON(csvData: string) {
+  const lines = csvData.trim().split('\n');
+  if (lines.length < 2) return [];
+
+  // Skip the header line and parse data
+  const dataLines = lines.slice(1);
+  const deals = [];
+
+  for (const line of dataLines) {
+    // Parse CSV line (handling quoted fields)
+    const fields = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        fields.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    fields.push(current.trim()); // Add the last field
+
+    if (fields.length >= 7) {
+      // Convert CSV format to our JSON format
+      const deal = {
+        BD_DT_DATE: fields[0].replace(/"/g, ''),
+        BD_DT_ORDER: new Date(fields[0].replace(/"/g, '')).toISOString(),
+        BD_SYMBOL: fields[1].replace(/"/g, ''),
+        BD_SCRIP_NAME: fields[2].replace(/"/g, ''),
+        BD_CLIENT_NAME: fields[3].replace(/"/g, ''),
+        BD_BUY_SELL: fields[4].replace(/"/g, ''),
+        BD_QTY_TRD: parseInt(fields[5].replace(/"/g, '').replace(/,/g, '')),
+        BD_TP_WATP: parseFloat(fields[6].replace(/"/g, '').replace(/,/g, '')),
+        BD_REMARKS: fields[7] ? fields[7].replace(/"/g, '') : '-'
+      };
+      deals.push(deal);
+    }
+  }
+
+  return deals;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -73,16 +120,16 @@ export async function GET(request: Request) {
       // Do not re-throw, as this is not critical
     }
 
-    // Step 2: Use cookies to fetch bulk/block deals data
+    // Step 2: Use cookies to fetch bulk/block deals data in CSV format
     const baseUrl = 'https://www.nseindia.com/api/historicalOR/bulk-block-short-deals';
-    const bulkBlockDealsUrl = `${baseUrl}?optionType=${optionType}&from=${fromDate}&to=${toDate}`;
+    const bulkBlockDealsUrl = `${baseUrl}?optionType=${optionType}&from=${fromDate}&to=${toDate}&csv=true`;
 
     const bulkBlockResponse = await axios.get(bulkBlockDealsUrl, {
       headers: {
         'User-Agent':
           `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ` +
           `(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36`,
-        'Accept': 'application/json, text/plain, */*',
+        'Accept': 'text/csv, text/plain, */*',
         'Cookie': cookies.join('; '),
       },
     }).catch(error => {
@@ -90,10 +137,13 @@ export async function GET(request: Request) {
       throw error;
     });
 
-    // Step 3: Extract unique symbols and fetch market cap data
-    const dealsData = bulkBlockResponse.data;
-    if (dealsData && dealsData.data && Array.isArray(dealsData.data)) {
-      const uniqueSymbols = [...new Set(dealsData.data.map((deal: any) => deal.BD_SYMBOL))];
+    // Step 3: Parse CSV data to JSON format
+    const csvData = bulkBlockResponse.data;
+    const dealsData = parseCSVToJSON(csvData);
+
+    // Step 4: Extract unique symbols and fetch market cap data
+    if (dealsData && Array.isArray(dealsData)) {
+      const uniqueSymbols = [...new Set(dealsData.map((deal: any) => deal.BD_SYMBOL))];
 
       // Fetch market cap for all unique symbols
       const marketCapPromises = uniqueSymbols.map(symbol =>
@@ -110,22 +160,39 @@ export async function GET(request: Request) {
         });
 
         // Add market cap to each deal record
-        dealsData.data = dealsData.data.map((deal: any) => ({
+        const enhancedDealsData = dealsData.map((deal: any) => ({
           ...deal,
           marketCap: marketCapMap[deal.BD_SYMBOL] || 0
         }));
 
-        // Add market cap mapping to response for easy access
-        dealsData.marketCapData = marketCapMap;
+        // Return data in the same format as before
+        const response = {
+          data: enhancedDealsData,
+          marketCapData: marketCapMap,
+          totalRecords: enhancedDealsData.length,
+          dataSource: 'CSV' // Indicator that we used CSV format
+        };
+
+        return NextResponse.json(response);
 
       } catch (error) {
         console.error('Error fetching market cap data:', error);
         // Continue without market cap data if it fails
+        const response = {
+          data: dealsData,
+          totalRecords: dealsData.length,
+          dataSource: 'CSV'
+        };
+        return NextResponse.json(response);
       }
     }
 
-    // Step 4: Return the enhanced data to the client
-    return NextResponse.json(dealsData);
+    // Step 5: Return empty response if no data
+    return NextResponse.json({
+      data: [],
+      totalRecords: 0,
+      dataSource: 'CSV'
+    });
   } catch (error: any) {
     console.error('Error fetching data:', error.message);
     const errorResponse = { error: 'Error fetching Bulk/Block deals data' };

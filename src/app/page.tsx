@@ -2,6 +2,7 @@
 
 import { FaChartLine, FaExchangeAlt, FaChartBar, FaUsers, FaArrowUp, FaRocket, FaShieldAlt } from 'react-icons/fa';
 import Navigation from './component/Navigation';
+import Documentation from './component/Documentation';
 
 export default function HomePage() {
   const navigationCards = [
@@ -67,6 +68,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       <Navigation />
+      <Documentation />
       <div className="container mx-auto px-6 py-12">
         {/* Header */}
         <div className="text-center mb-16">

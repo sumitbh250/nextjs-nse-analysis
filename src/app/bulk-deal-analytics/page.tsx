@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaSyncAlt, FaChevronDown, FaChevronRight, FaSortUp, FaSortDown, FaSort } from 'react-icons/fa';
 import Navigation from '@/app/component/Navigation';
+import Documentation from '@/app/component/Documentation';
 
 interface DealData {
   BD_DT_DATE: string;
@@ -239,38 +240,40 @@ export default function BulkDealAnalyticsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       <Navigation />
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
+      <Documentation />
+
+      {/* Compact Header */}
+      <div className="px-4 py-3">
+        <div className="flex justify-between items-center mb-3">
           <div>
-            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               Bulk Deal Analytics
             </h1>
-            <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg px-3 py-1 inline-block">
-              📊 Data from {fromDisplay} to {toDisplay}
+            <div className="text-xs text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded px-2 py-1 inline-block mt-1">
+              📊 {fromDisplay} to {toDisplay}
             </div>
           </div>
-        <button
-          onClick={fetchAnalyticsData}
-          disabled={loading}
-          className="flex items-center px-6 py-3 text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <FaSyncAlt className={loading ? 'animate-spin mr-2' : 'mr-2'} />
-          {loading ? 'Loading...' : 'Refresh'}
-        </button>
-      </div>
+          <button
+            onClick={fetchAnalyticsData}
+            disabled={loading}
+            className="flex items-center px-4 py-2 text-sm text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
+          >
+            <FaSyncAlt className={loading ? 'animate-spin mr-2' : 'mr-2'} size={12} />
+            {loading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
 
-      {/* Compact Date Filters */}
-      <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-lg border border-white/20">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">📅 Period:</span>
+        {/* Ultra Compact Date Filters */}
+        <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-lg shadow-sm border border-white/20">
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">📅</span>
           {dateFilters.map((filter) => (
             <button
               key={filter.label}
               onClick={() => setDateFilter(filter.label)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+              className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
                 dateFilter === filter.label
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md transform scale-105'
-                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 hover:shadow-md'
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
+                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
               }`}
             >
               {filter.label}
@@ -278,10 +281,10 @@ export default function BulkDealAnalyticsPage() {
           ))}
           <button
             onClick={() => setDateFilter('Custom')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 ${
+            className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
               dateFilter === 'Custom'
-                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md transform scale-105'
-                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 hover:shadow-md'
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
+                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
             }`}
           >
             Custom
@@ -292,56 +295,56 @@ export default function BulkDealAnalyticsPage() {
               setCustomFromDate('');
               setCustomToDate('');
             }}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gradient-to-r from-red-500 to-pink-500 text-white hover:from-red-600 hover:to-pink-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+            className="px-2 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-all duration-200 shadow-sm"
           >
             Clear
           </button>
-        </div>
 
-        {dateFilter === 'Custom' && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">🗓️ Custom:</span>
-            <input
-              type="date"
-              value={customFromDate}
-              onChange={(e) => setCustomFromDate(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200"
-            />
-            <span className="text-sm text-gray-500">to</span>
-            <input
-              type="date"
-              value={customToDate}
-              onChange={(e) => setCustomToDate(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200"
-            />
-            <button
-              onClick={fetchAnalyticsData}
-              disabled={loading}
-              className="px-4 py-1.5 text-sm text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-500 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              Apply
-            </button>
-          </div>
-        )}
+          {dateFilter === 'Custom' && (
+            <>
+              <input
+                type="date"
+                value={customFromDate}
+                onChange={(e) => setCustomFromDate(e.target.value)}
+                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+              <span className="text-xs text-gray-500">to</span>
+              <input
+                type="date"
+                value={customToDate}
+                onChange={(e) => setCustomToDate(e.target.value)}
+                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+              <button
+                onClick={fetchAnalyticsData}
+                disabled={loading}
+                className="px-3 py-1 text-xs text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-400 rounded transition-all duration-200 shadow-sm"
+              >
+                Apply
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Analytics Table */}
+      {/* Loading State */}
       {loading && (
-        <div className="text-center py-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg mb-4">
-            <FaSyncAlt className="w-8 h-8 text-white animate-spin" />
+        <div className="text-center py-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg mb-3">
+            <FaSyncAlt className="w-6 h-6 text-white animate-spin" />
           </div>
-          <p className="text-lg text-gray-600 dark:text-gray-400">Loading analytics...</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading analytics...</p>
         </div>
       )}
 
+      {/* Compact Analytics Table */}
       {sortedData.length > 0 ? (
-        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden border border-white/20">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-700">
-            <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              📈 Bulk Deal Analytics
-              <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-3 bg-white dark:bg-gray-700 px-3 py-1 rounded-full">
-                {sortedData.length} stocks analyzed
+        <div className="mx-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-white/20">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-700">
+            <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              📈 Analysis Results
+              <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2 bg-white dark:bg-gray-700 px-2 py-1 rounded-full">
+                {sortedData.length} stocks
               </span>
             </h3>
           </div>
@@ -350,7 +353,7 @@ export default function BulkDealAnalyticsPage() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     <button
                       onClick={() => handleSort('symbol')}
                       className="flex items-center space-x-1 hover:text-blue-600"
@@ -359,62 +362,62 @@ export default function BulkDealAnalyticsPage() {
                       {getSortIcon('symbol')}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 max-w-[120px]">
                     COMPANY
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     <button
                       onClick={() => handleSort('marketCap')}
                       className="flex items-center space-x-1 hover:text-blue-600"
                     >
-                      <span>MARKET CAP</span>
+                      <span>MCAP</span>
                       {getSortIcon('marketCap')}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
-                    QTY BOUGHT
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                    QTY B
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
-                    QTY SOLD
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                    QTY S
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     <button
                       onClick={() => handleSort('totalValueBought')}
                       className="flex items-center space-x-1 hover:text-blue-600"
                     >
-                      <span>VALUE BOUGHT</span>
+                      <span>VAL B</span>
                       {getSortIcon('totalValueBought')}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     <button
                       onClick={() => handleSort('totalValueSold')}
                       className="flex items-center space-x-1 hover:text-blue-600"
                     >
-                      <span>VALUE SOLD</span>
+                      <span>VAL S</span>
                       {getSortIcon('totalValueSold')}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     <button
                       onClick={() => handleSort('netValue')}
                       className="flex items-center space-x-1 hover:text-blue-600"
                     >
-                      <span>NET VALUE</span>
+                      <span>NET</span>
                       {getSortIcon('netValue')}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     <button
                       onClick={() => handleSort('dealCount')}
                       className="flex items-center space-x-1 hover:text-blue-600"
                     >
-                      <span>DEALS</span>
+                      <span>CNT</span>
                       {getSortIcon('dealCount')}
                     </button>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
-                    DETAILS
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                    INFO
                   </th>
                 </tr>
               </thead>
@@ -422,110 +425,96 @@ export default function BulkDealAnalyticsPage() {
                 {sortedData.map((row) => (
                   <React.Fragment key={row.symbol}>
                     <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100">
                         {row.symbol}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[120px] truncate" title={row.companyName}>
                         {row.companyName}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
                         {formatMarketCap(row.marketCap)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                      <td className="px-2 py-2 text-xs text-green-600 dark:text-green-400">
                         {formatNumber(row.totalBought)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                      <td className="px-2 py-2 text-xs text-red-600 dark:text-red-400">
                         {formatNumber(row.totalSold)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-green-600 dark:text-green-400">
-                        {formatCurrency(row.totalValueBought)}
+                      <td className="px-2 py-2 text-xs text-green-600 dark:text-green-400">
+                        ₹{(row.totalValueBought / 10000000).toFixed(1)}Cr
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 dark:text-red-400">
-                        {formatCurrency(row.totalValueSold)}
+                      <td className="px-2 py-2 text-xs text-red-600 dark:text-red-400">
+                        ₹{(row.totalValueSold / 10000000).toFixed(1)}Cr
                       </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${
-                        row.netValue >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                      <td className={`px-2 py-2 text-xs font-medium ${
+                        row.netValue > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                       }`}>
-                        {formatCurrency(row.netValue)}
+                        ₹{(Math.abs(row.netValue) / 10000000).toFixed(1)}Cr
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                        {row.dealCount} ({row.uniqueClients} clients)
+                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
+                        {row.dealCount}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      <td className="px-2 py-2">
                         <button
                           onClick={() => toggleRowExpansion(row.symbol)}
-                          className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
                         >
-                          {expandedRows.has(row.symbol) ? <FaChevronDown /> : <FaChevronRight />}
-                          <span className="ml-1">
-                            {expandedRows.has(row.symbol) ? 'Hide' : 'Show'}
-                          </span>
+                          {expandedRows.has(row.symbol) ?
+                            <FaChevronDown size={12} /> :
+                            <FaChevronRight size={12} />
+                          }
                         </button>
                       </td>
                     </tr>
+
+                    {/* Expanded Details */}
                     {expandedRows.has(row.symbol) && (
                       <tr>
-                        <td colSpan={10} className="px-4 py-4 bg-gray-50 dark:bg-gray-900">
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <span className="font-medium text-gray-700 dark:text-gray-300">Net Position:</span>
-                                <span className={`ml-2 ${row.netPosition >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {formatNumber(row.netPosition)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="font-medium text-gray-700 dark:text-gray-300">Avg Deal Size:</span>
-                                <span className="ml-2 text-gray-600 dark:text-gray-400">
-                                  {formatNumber(Math.round(row.avgDealSize))}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="font-medium text-gray-700 dark:text-gray-300">Price Range:</span>
-                                <span className="ml-2 text-gray-600 dark:text-gray-400">
-                                  ₹{row.minPrice} - ₹{row.maxPrice}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="font-medium text-gray-700 dark:text-gray-300">Market Cap:</span>
-                                <span className="ml-2 text-gray-600 dark:text-gray-400">
-                                  {formatMarketCap(row.marketCap)}
-                                </span>
-                              </div>
+                        <td colSpan={10} className="px-2 py-3 bg-gray-50 dark:bg-gray-800">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap gap-4 text-xs text-gray-600 dark:text-gray-400 mb-3">
+                              <span>🏢 Market Cap: <strong>{formatMarketCap(row.marketCap)}</strong></span>
+                              <span>👥 Clients: <strong>{row.uniqueClients}</strong></span>
+                              <span>📊 Avg Deal: <strong>{formatNumber(Math.round(row.avgDealSize))}</strong></span>
+                              <span>💰 Price Range: <strong>₹{row.minPrice.toFixed(1)} - ₹{row.maxPrice.toFixed(1)}</strong></span>
                             </div>
+
                             <div className="overflow-x-auto">
-                              <table className="min-w-full text-sm">
+                              <table className="min-w-full text-xs">
                                 <thead>
-                                  <tr className="bg-gray-100 dark:bg-gray-800">
-                                    <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Date</th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Client</th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Type</th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Quantity</th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Price</th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Value</th>
+                                  <tr className="border-b border-gray-300 dark:border-gray-600">
+                                    <th className="text-left py-1 px-2 font-medium">Date</th>
+                                    <th className="text-left py-1 px-2 font-medium">Client</th>
+                                    <th className="text-left py-1 px-2 font-medium">Type</th>
+                                    <th className="text-left py-1 px-2 font-medium">Qty</th>
+                                    <th className="text-left py-1 px-2 font-medium">Price</th>
+                                    <th className="text-left py-1 px-2 font-medium">Value</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                  {row.deals.map((deal, idx) => (
-                                    <tr key={idx}>
-                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{deal.BD_DT_DATE}</td>
-                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{deal.BD_CLIENT_NAME}</td>
-                                      <td className={`px-3 py-2 font-medium ${
+                                <tbody>
+                                  {row.deals.slice(0, 5).map((deal, index) => (
+                                    <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
+                                      <td className="py-1 px-2">{deal.BD_DT_DATE}</td>
+                                      <td className="py-1 px-2 max-w-[100px] truncate" title={deal.BD_CLIENT_NAME}>
+                                        {deal.BD_CLIENT_NAME}
+                                      </td>
+                                      <td className={`py-1 px-2 font-medium ${
                                         deal.BD_BUY_SELL === 'BUY' ? 'text-green-600' : 'text-red-600'
                                       }`}>
                                         {deal.BD_BUY_SELL}
                                       </td>
-                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
-                                        {formatNumber(deal.BD_QTY_TRD)}
-                                      </td>
-                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
-                                        ₹{deal.BD_TP_WATP}
-                                      </td>
-                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
-                                        {formatCurrency(deal.BD_QTY_TRD * deal.BD_TP_WATP)}
-                                      </td>
+                                      <td className="py-1 px-2">{formatNumber(deal.BD_QTY_TRD)}</td>
+                                      <td className="py-1 px-2">₹{deal.BD_TP_WATP.toFixed(1)}</td>
+                                      <td className="py-1 px-2">₹{((deal.BD_QTY_TRD * deal.BD_TP_WATP) / 10000000).toFixed(2)}Cr</td>
                                     </tr>
                                   ))}
+                                  {row.deals.length > 5 && (
+                                    <tr>
+                                      <td colSpan={6} className="py-1 px-2 text-gray-500 italic text-center">
+                                        ... and {row.deals.length - 5} more deals
+                                      </td>
+                                    </tr>
+                                  )}
                                 </tbody>
                               </table>
                             </div>
@@ -539,12 +528,15 @@ export default function BulkDealAnalyticsPage() {
             </table>
           </div>
         </div>
-      ) : !loading ? (
-        <div className="text-center py-8">
-          <p className="text-lg text-gray-600 dark:text-gray-400">No analytics data available</p>
-        </div>
-      ) : null}
-      </div>
+      ) : (
+        !loading && (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">📊</div>
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">No analytics data available</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500">Select a date range and click refresh to view data</p>
+          </div>
+        )
+      )}
     </div>
   );
 }
