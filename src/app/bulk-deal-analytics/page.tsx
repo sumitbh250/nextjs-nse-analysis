@@ -31,10 +31,11 @@ interface AggregatedData {
   minPrice: number;
   maxPrice: number;
   marketCap: number;
+  askPrice: number;
   deals: DealData[];
 }
 
-type SortField = 'symbol' | 'totalValueBought' | 'totalValueSold' | 'netValue' | 'dealCount' | 'marketCap';
+type SortField = 'symbol' | 'totalValueBought' | 'totalValueSold' | 'netValue' | 'dealCount' | 'marketCap' | 'askPrice';
 type SortDirection = 'asc' | 'desc';
 
 export default function BulkDealAnalyticsPage() {
@@ -124,7 +125,7 @@ export default function BulkDealAnalyticsPage() {
       const data = await response.json();
 
       if (data.data) {
-        const aggregated = aggregateDealsData(data.data, data.marketCapData || {});
+        const aggregated = aggregateDealsData(data.data, data.marketCapData || {}, data.askPriceData || {});
         setAnalyticsData(aggregated);
       }
     } catch (error) {
@@ -134,7 +135,7 @@ export default function BulkDealAnalyticsPage() {
     }
   }
 
-  function aggregateDealsData(deals: DealData[], marketCapData: { [key: string]: number } = {}): AggregatedData[] {
+  function aggregateDealsData(deals: DealData[], marketCapData: { [key: string]: number } = {}, askPriceData: { [key: string]: number } = {}): AggregatedData[] {
     const grouped = deals.reduce((acc, deal) => {
       const key = deal.BD_SYMBOL;
       if (!acc[key]) {
@@ -187,6 +188,7 @@ export default function BulkDealAnalyticsPage() {
       minPrice: Math.min(...item.prices),
       maxPrice: Math.max(...item.prices),
       marketCap: marketCapData[item.symbol] || 0,
+      askPrice: askPriceData[item.symbol] || 0,
       deals: item.deals.sort((a: DealData, b: DealData) => b.BD_QTY_TRD - a.BD_QTY_TRD)
     }));
 
@@ -375,6 +377,15 @@ export default function BulkDealAnalyticsPage() {
                     </button>
                   </th>
                   <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                    <button
+                      onClick={() => handleSort('askPrice')}
+                      className="flex items-center space-x-1 hover:text-blue-600"
+                    >
+                      <span>ASK</span>
+                      {getSortIcon('askPrice')}
+                    </button>
+                  </th>
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     QTY B
                   </th>
                   <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
@@ -434,6 +445,9 @@ export default function BulkDealAnalyticsPage() {
                       <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
                         {formatMarketCap(row.marketCap)}
                       </td>
+                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
+                        {row.askPrice > 0 ? `₹${row.askPrice.toFixed(1)}` : 'N/A'}
+                      </td>
                       <td className="px-2 py-2 text-xs text-green-600 dark:text-green-400">
                         {formatNumber(row.totalBought)}
                       </td>
@@ -470,10 +484,11 @@ export default function BulkDealAnalyticsPage() {
                     {/* Expanded Details */}
                     {expandedRows.has(row.symbol) && (
                       <tr>
-                        <td colSpan={10} className="px-2 py-3 bg-gray-50 dark:bg-gray-800">
+                        <td colSpan={11} className="px-2 py-3 bg-gray-50 dark:bg-gray-800">
                           <div className="space-y-2">
                             <div className="flex flex-wrap gap-4 text-xs text-gray-600 dark:text-gray-400 mb-3">
                               <span>🏢 Market Cap: <strong>{formatMarketCap(row.marketCap)}</strong></span>
+                              <span>💰 Ask Price: <strong>{row.askPrice > 0 ? `₹${row.askPrice.toFixed(1)}` : 'N/A'}</strong></span>
                               <span>👥 Clients: <strong>{row.uniqueClients}</strong></span>
                               <span>📊 Avg Deal: <strong>{formatNumber(Math.round(row.avgDealSize))}</strong></span>
                               <span>💰 Price Range: <strong>₹{row.minPrice.toFixed(1)} - ₹{row.maxPrice.toFixed(1)}</strong></span>

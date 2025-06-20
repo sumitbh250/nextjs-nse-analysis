@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import axios from 'axios';
 
-async function fetchMarketCap(symbol: string, cookies: string[]): Promise<number> {
+async function fetchMarketCapAndAsk(symbol: string, cookies: string[]): Promise<{marketCap: number, askPrice: number}> {
   try {
     const response = await axios.get(`https://www.nseindia.com/api/quote-equity?symbol=${symbol}&section=trade_info`, {
       headers: {
@@ -15,10 +15,14 @@ async function fetchMarketCap(symbol: string, cookies: string[]): Promise<number
 
     // Use totalMarketCap directly from the API response (already in crores)
     const totalMarketCap = response.data.marketDeptOrderBook?.tradeInfo?.totalMarketCap || 0;
-    return totalMarketCap;
+
+    // Get lowest ask price (first element in ask array)
+    const askPrice = response.data.marketDeptOrderBook?.ask?.[0]?.price || 0;
+
+    return { marketCap: totalMarketCap, askPrice };
   } catch (error) {
-    console.error(`Error fetching market cap for ${symbol}:`, error);
-    return 0;
+    console.error(`Error fetching market data for ${symbol}:`, error);
+    return { marketCap: 0, askPrice: 0 };
   }
 }
 
@@ -145,30 +149,34 @@ export async function GET(request: Request) {
     if (dealsData && Array.isArray(dealsData)) {
       const uniqueSymbols = [...new Set(dealsData.map((deal: any) => deal.BD_SYMBOL))];
 
-      // Fetch market cap for all unique symbols
-      const marketCapPromises = uniqueSymbols.map(symbol =>
-        fetchMarketCap(symbol as string, cookies)
+      // Fetch market cap and ask price for all unique symbols
+      const marketDataPromises = uniqueSymbols.map(symbol =>
+        fetchMarketCapAndAsk(symbol as string, cookies)
       );
 
       try {
-        const marketCaps = await Promise.all(marketCapPromises);
+        const marketDataResults = await Promise.all(marketDataPromises);
 
-        // Create a map of symbol to market cap
+        // Create maps for market cap and ask prices
         const marketCapMap: { [key: string]: number } = {};
+        const askPriceMap: { [key: string]: number } = {};
         uniqueSymbols.forEach((symbol, index) => {
-          marketCapMap[symbol as string] = marketCaps[index];
+          marketCapMap[symbol as string] = marketDataResults[index].marketCap;
+          askPriceMap[symbol as string] = marketDataResults[index].askPrice;
         });
 
-        // Add market cap to each deal record
+        // Add market cap and ask price to each deal record
         const enhancedDealsData = dealsData.map((deal: any) => ({
           ...deal,
-          marketCap: marketCapMap[deal.BD_SYMBOL] || 0
+          marketCap: marketCapMap[deal.BD_SYMBOL] || 0,
+          askPrice: askPriceMap[deal.BD_SYMBOL] || 0
         }));
 
         // Return data in the same format as before
         const response = {
           data: enhancedDealsData,
           marketCapData: marketCapMap,
+          askPriceData: askPriceMap,
           totalRecords: enhancedDealsData.length,
           dataSource: 'CSV' // Indicator that we used CSV format
         };
@@ -176,8 +184,8 @@ export async function GET(request: Request) {
         return NextResponse.json(response);
 
       } catch (error) {
-        console.error('Error fetching market cap data:', error);
-        // Continue without market cap data if it fails
+        console.error('Error fetching market data:', error);
+        // Continue without market data if it fails
         const response = {
           data: dealsData,
           totalRecords: dealsData.length,
