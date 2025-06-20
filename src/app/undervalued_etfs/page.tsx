@@ -27,7 +27,7 @@ export default function UndervaluedEtfsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('percentage');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   async function fetchEtfData() {
     try {
@@ -177,13 +177,13 @@ export default function UndervaluedEtfsPage() {
                 <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                   <tr>
                     {[
-                      { key: 'symbol', label: 'SYMBOL', sortable: true },
+                      { key: 'symbol', label: 'SYM', sortable: true },
                       { key: 'name', label: 'NAME', sortable: false },
                       { key: 'ltp', label: 'LTP', sortable: true },
                       { key: 'inav', label: 'iNAV', sortable: true },
-                      { key: 'percentage', label: 'DIFF %', sortable: true },
+                      { key: 'percentage', label: 'DIFF%', sortable: true },
                       { key: 'volume', label: 'VOL', sortable: true },
-                      { key: 'value', label: 'VALUE', sortable: true }
+                      { key: 'value', label: 'VAL', sortable: true }
                     ].map((column) => (
                       <th key={column.key} className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                         {column.sortable ? (
@@ -204,11 +204,15 @@ export default function UndervaluedEtfsPage() {
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {sortedEtfData.map((etf, index) => (
                     <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100">
-                        {etf.symbol}
+                      <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100" title={etf.symbol}>
+                        <div className="max-w-[60px] truncate">
+                          {etf.symbol}
+                        </div>
                       </td>
-                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[150px] truncate" title={etf.companyName}>
-                        {etf.companyName}
+                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300" title={etf.companyName}>
+                        <div className="max-w-[120px] truncate">
+                          {etf.companyName}
+                        </div>
                       </td>
                       <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
                         ₹{(Number(etf.ltP) || 0).toFixed(2)}
@@ -217,7 +221,7 @@ export default function UndervaluedEtfsPage() {
                         ₹{(Number(etf.inav) || 0).toFixed(2)}
                       </td>
                       <td className={`px-2 py-2 text-xs font-medium ${
-                        parseFloat(etf.undervalued_pct || '0') < 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                        parseFloat(etf.undervalued_pct || '0') > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                       }`}>
                         {etf.undervalued_pct || '0.00'}%
                       </td>
@@ -300,13 +304,13 @@ export default function UndervaluedEtfsPage() {
               <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                 <tr>
                   {[
-                    { key: 'symbol', label: 'SYMBOL', sortable: true },
+                    { key: 'symbol', label: 'SYM', sortable: true },
                     { key: 'name', label: 'NAME', sortable: false },
                     { key: 'ltp', label: 'LTP', sortable: true },
                     { key: 'inav', label: 'iNAV', sortable: true },
-                    { key: 'percentage', label: 'DIFF %', sortable: true },
+                    { key: 'percentage', label: 'DIFF%', sortable: true },
                     { key: 'volume', label: 'VOL', sortable: true },
-                    { key: 'value', label: 'VALUE', sortable: true }
+                    { key: 'value', label: 'VAL', sortable: true }
                   ].map((column) => (
                     <th key={column.key} className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                       {column.sortable ? (
@@ -327,11 +331,15 @@ export default function UndervaluedEtfsPage() {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {sortedEtfData.map((etf, index) => (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100">
-                      {etf.symbol}
+                    <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100" title={etf.symbol}>
+                      <div className="max-w-[60px] truncate">
+                        {etf.symbol}
+                      </div>
                     </td>
-                    <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[150px] truncate" title={etf.companyName}>
-                      {etf.companyName}
+                    <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300" title={etf.companyName}>
+                      <div className="max-w-[120px] truncate">
+                        {etf.companyName}
+                      </div>
                     </td>
                     <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
                       ₹{(Number(etf.ltP) || 0).toFixed(2)}
@@ -339,9 +347,9 @@ export default function UndervaluedEtfsPage() {
                     <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
                       ₹{(Number(etf.inav) || 0).toFixed(2)}
                     </td>
-                    <td className={`px-2 py-2 text-xs font-medium ${
-                      parseFloat(etf.undervalued_pct || '0') < 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                    }`}>
+                                            <td className={`px-2 py-2 text-xs font-medium ${
+                          parseFloat(etf.undervalued_pct || '0') > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                        }`}>
                       {etf.undervalued_pct || '0.00'}%
                     </td>
                     <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
