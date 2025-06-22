@@ -41,6 +41,20 @@ export default function Navigation() {
       icon: <FaUsers className="w-4 h-4" />,
       active: pathname === '/block-deal-analytics',
       color: 'from-indigo-500 to-purple-600'
+    },
+    {
+      label: 'Client Analytics',
+      href: '/client-analytics',
+      icon: <FaUsers className="w-4 h-4" />,
+      active: pathname === '/client-analytics',
+      color: 'from-teal-500 to-cyan-600'
+    },
+    {
+      label: 'Client-Stock Analytics',
+      href: '/client-stock-analytics',
+      icon: <FaChartLine className="w-4 h-4" />,
+      active: pathname === '/client-stock-analytics',
+      color: 'from-emerald-500 to-teal-600'
     }
   ];
 
