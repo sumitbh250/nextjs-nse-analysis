@@ -35,8 +35,20 @@ interface AggregatedData {
   deals: DealData[];
 }
 
+interface ClientAggregatedData {
+  clientName: string;
+  symbol: string;
+  companyName: string;
+  totalShares: number; // bought - sold
+  totalValue: number; // sum of all deal values
+  dealCount: number;
+  avgPrice: number;
+  deals: DealData[];
+}
+
 type SortField = 'symbol' | 'totalValueBought' | 'totalValueSold' | 'netValue' | 'dealCount' | 'marketCap' | 'askPrice';
 type SortDirection = 'asc' | 'desc';
+type ExpandedViewMode = 'deals' | 'clients';
 
 export default function BlockDealAnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<AggregatedData[]>([]);
@@ -47,6 +59,8 @@ export default function BlockDealAnalyticsPage() {
   const [dateFilter, setDateFilter] = useState('1W');
   const [customFromDate, setCustomFromDate] = useState('');
   const [customToDate, setCustomToDate] = useState('');
+  const [expandedViewMode, setExpandedViewMode] = useState<Map<string, ExpandedViewMode>>(new Map());
+  const [showAllDeals, setShowAllDeals] = useState<Set<string>>(new Set());
 
   const dateFilters = [
     { label: '1D', days: 1 },
@@ -55,30 +69,6 @@ export default function BlockDealAnalyticsPage() {
     { label: '3M', days: 90 },
     { label: '6M', days: 180 },
     { label: '1Y', days: 365 },
-  ];
-
-  const analytics_columns = [
-    { key: "symbol", label: "SYMBOL" },
-    { key: "companyName", label: "COMPANY" },
-    { key: "totalBought", label: "QTY BOUGHT" },
-    { key: "totalSold", label: "QTY SOLD" },
-    { key: "totalValueBought", label: "VALUE BOUGHT (₹)" },
-    { key: "totalValueSold", label: "VALUE SOLD (₹)" },
-    { key: "netPosition", label: "NET QTY" },
-    { key: "netValue", label: "NET VALUE (₹)" },
-    { key: "dealCount", label: "DEALS" },
-    { key: "uniqueClients", label: "CLIENTS" },
-    { key: "avgDealSize", label: "AVG SIZE" },
-    { key: "priceRange", label: "PRICE RANGE" },
-  ];
-
-  const individual_deals_columns = [
-    { key: "BD_DT_DATE", label: "DATE" },
-    { key: "BD_CLIENT_NAME", label: "CLIENT" },
-    { key: "BD_BUY_SELL", label: "TYPE" },
-    { key: "BD_QTY_TRD", label: "QUANTITY" },
-    { key: "BD_TP_WATP", label: "PRICE" },
-    { key: "dealValue", label: "VALUE (₹)" },
   ];
 
   function getDateRange() {
@@ -241,14 +231,81 @@ export default function BlockDealAnalyticsPage() {
     });
   }
 
-  function toggleRowExpansion(symbol: string) {
+  function toggleRowExpansion(key: string) {
     const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(symbol)) {
-      newExpanded.delete(symbol);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
     } else {
-      newExpanded.add(symbol);
+      newExpanded.add(key);
     }
     setExpandedRows(newExpanded);
+  }
+
+  function toggleShowAllDeals(key: string) {
+    const newShowAll = new Set(showAllDeals);
+    if (newShowAll.has(key)) {
+      newShowAll.delete(key);
+    } else {
+      newShowAll.add(key);
+    }
+    setShowAllDeals(newShowAll);
+  }
+
+  function getExpandedViewMode(symbol: string): ExpandedViewMode {
+    return expandedViewMode.get(symbol) || 'deals';
+  }
+
+  function setExpandedViewModeForSymbol(symbol: string, mode: ExpandedViewMode) {
+    const newExpandedViewMode = new Map(expandedViewMode);
+    newExpandedViewMode.set(symbol, mode);
+    setExpandedViewMode(newExpandedViewMode);
+  }
+
+  function aggregateClientDataForSymbol(deals: DealData[], symbol: string): ClientAggregatedData[] {
+    const clientDeals = deals.filter(deal => deal.BD_SYMBOL === symbol);
+    const grouped = clientDeals.reduce((acc, deal) => {
+      const key = deal.BD_CLIENT_NAME;
+      if (!acc[key]) {
+        acc[key] = {
+          clientName: deal.BD_CLIENT_NAME,
+          symbol: deal.BD_SYMBOL,
+          companyName: deal.BD_SCRIP_NAME,
+          totalShares: 0,
+          totalValue: 0,
+          dealCount: 0,
+          totalPriceWeighted: 0,
+          deals: []
+        };
+      }
+
+      const dealValue = deal.BD_QTY_TRD * deal.BD_TP_WATP;
+
+      if (deal.BD_BUY_SELL === 'BUY') {
+        acc[key].totalShares += deal.BD_QTY_TRD;
+      } else {
+        acc[key].totalShares -= deal.BD_QTY_TRD;
+      }
+
+      acc[key].totalValue += dealValue;
+      acc[key].totalPriceWeighted += dealValue;
+      acc[key].deals.push(deal);
+      acc[key].dealCount++;
+
+      return acc;
+    }, {} as any);
+
+    const clientData = Object.values(grouped).map((item: any) => ({
+      clientName: item.clientName,
+      symbol: item.symbol,
+      companyName: item.companyName,
+      totalShares: item.totalShares,
+      totalValue: item.totalValue,
+      dealCount: item.dealCount,
+      avgPrice: item.totalPriceWeighted / (item.deals.reduce((sum: number, deal: DealData) => sum + deal.BD_QTY_TRD, 0)),
+      deals: item.deals.sort((a: DealData, b: DealData) => new Date(b.BD_DT_DATE).getTime() - new Date(a.BD_DT_DATE).getTime())
+    }));
+
+    return clientData.sort((a, b) => Math.abs(b.totalValue) - Math.abs(a.totalValue));
   }
 
   function getSortIcon(field: SortField) {
@@ -368,7 +425,7 @@ export default function BlockDealAnalyticsPage() {
         <div className="mx-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-white/20">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-700">
             <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              📈 Analysis Results
+              Stock Analysis Results
               <span className="text-xs font-normal text-gray-500 dark:text-gray-400 ml-2 bg-white dark:bg-gray-700 px-2 py-1 rounded-full">
                 {sortedData.length} stocks
               </span>
@@ -456,6 +513,7 @@ export default function BlockDealAnalyticsPage() {
                   </th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {sortedData.map((row) => (
                   <React.Fragment key={row.symbol}>
@@ -518,45 +576,122 @@ export default function BlockDealAnalyticsPage() {
                               <span>💰 Price Range: <strong>₹{row.minPrice.toFixed(1)} - ₹{row.maxPrice.toFixed(1)}</strong></span>
                             </div>
 
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full text-xs">
-                                <thead>
-                                  <tr className="border-b border-gray-300 dark:border-gray-600">
-                                    <th className="text-left py-1 px-2 font-medium">Date</th>
-                                    <th className="text-left py-1 px-2 font-medium">Client</th>
-                                    <th className="text-left py-1 px-2 font-medium">Type</th>
-                                    <th className="text-left py-1 px-2 font-medium">Qty</th>
-                                    <th className="text-left py-1 px-2 font-medium">Price</th>
-                                    <th className="text-left py-1 px-2 font-medium">Value</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {row.deals.slice(0, 5).map((deal, index) => (
-                                    <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
-                                      <td className="py-1 px-2">{deal.BD_DT_DATE}</td>
-                                      <td className="py-1 px-2 max-w-[100px] truncate" title={deal.BD_CLIENT_NAME}>
-                                        {deal.BD_CLIENT_NAME}
-                                      </td>
-                                      <td className={`py-1 px-2 font-medium ${
-                                        deal.BD_BUY_SELL === 'BUY' ? 'text-green-600' : 'text-red-600'
-                                      }`}>
-                                        {deal.BD_BUY_SELL}
-                                      </td>
-                                      <td className="py-1 px-2">{formatNumber(deal.BD_QTY_TRD)}</td>
-                                      <td className="py-1 px-2">₹{deal.BD_TP_WATP.toFixed(1)}</td>
-                                      <td className="py-1 px-2">₹{((deal.BD_QTY_TRD * deal.BD_TP_WATP) / 10000000).toFixed(2)}Cr</td>
-                                    </tr>
-                                  ))}
-                                  {row.deals.length > 5 && (
-                                    <tr>
-                                      <td colSpan={6} className="py-1 px-2 text-gray-500 italic text-center">
-                                        ... and {row.deals.length - 5} more deals
-                                      </td>
-                                    </tr>
-                                  )}
-                                </tbody>
-                              </table>
+                            {/* View Toggle */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">View:</span>
+                              <button
+                                onClick={() => setExpandedViewModeForSymbol(row.symbol, 'deals')}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                                  getExpandedViewMode(row.symbol) === 'deals'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                                }`}
+                              >
+                                📋 Individual Deals
+                              </button>
+                              <button
+                                onClick={() => setExpandedViewModeForSymbol(row.symbol, 'clients')}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                                  getExpandedViewMode(row.symbol) === 'clients'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                                }`}
+                              >
+                                👥 Client Aggregated
+                              </button>
                             </div>
+
+                            {getExpandedViewMode(row.symbol) === 'deals' ? (
+                              <>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Individual Deals</span>
+                                  {row.deals.length > 5 && (
+                                    <button
+                                      onClick={() => toggleShowAllDeals(row.symbol)}
+                                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                    >
+                                      {showAllDeals.has(row.symbol) ? 'Show Less' : `Show All ${row.deals.length} Deals`}
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full text-xs">
+                                    <thead>
+                                      <tr className="border-b border-gray-300 dark:border-gray-600">
+                                        <th className="text-left py-1 px-2 font-medium">Date</th>
+                                        <th className="text-left py-1 px-2 font-medium">Client</th>
+                                        <th className="text-left py-1 px-2 font-medium">Type</th>
+                                        <th className="text-left py-1 px-2 font-medium">Qty</th>
+                                        <th className="text-left py-1 px-2 font-medium">Price</th>
+                                        <th className="text-left py-1 px-2 font-medium">Value</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {(showAllDeals.has(row.symbol) ? row.deals : row.deals.slice(0, 5)).map((deal, index) => (
+                                        <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
+                                          <td className="py-1 px-2">{deal.BD_DT_DATE}</td>
+                                          <td className="py-1 px-2 max-w-[100px] truncate" title={deal.BD_CLIENT_NAME}>
+                                            {deal.BD_CLIENT_NAME}
+                                          </td>
+                                          <td className={`py-1 px-2 font-medium ${
+                                            deal.BD_BUY_SELL === 'BUY' ? 'text-green-600' : 'text-red-600'
+                                          }`}>
+                                            {deal.BD_BUY_SELL}
+                                          </td>
+                                          <td className="py-1 px-2">{formatNumber(deal.BD_QTY_TRD)}</td>
+                                          <td className="py-1 px-2">₹{deal.BD_TP_WATP.toFixed(1)}</td>
+                                          <td className="py-1 px-2">₹{((deal.BD_QTY_TRD * deal.BD_TP_WATP) / 10000000).toFixed(2)}Cr</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Client Aggregated Data</span>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full text-xs">
+                                    <thead>
+                                      <tr className="border-b border-gray-300 dark:border-gray-600">
+                                        <th className="text-left py-1 px-2 font-medium">Client</th>
+                                        <th className="text-left py-1 px-2 font-medium">Net Qty</th>
+                                        <th className="text-left py-1 px-2 font-medium">Total Value</th>
+                                        <th className="text-left py-1 px-2 font-medium">Avg Price</th>
+                                        <th className="text-left py-1 px-2 font-medium">Deals</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {aggregateClientDataForSymbol(row.deals, row.symbol).map((clientData, index) => (
+                                        <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
+                                          <td className="py-1 px-2 max-w-[150px] truncate" title={clientData.clientName}>
+                                            {clientData.clientName}
+                                          </td>
+                                          <td className={`py-1 px-2 font-medium ${
+                                            clientData.totalShares > 0 ? 'text-green-600' : 'text-red-600'
+                                          }`}>
+                                            {clientData.totalShares > 0 ? '+' : ''}{formatNumber(clientData.totalShares)}
+                                          </td>
+                                          <td className="py-1 px-2 text-blue-600 font-medium">
+                                            ₹{(clientData.totalValue / 10000000).toFixed(2)}Cr
+                                          </td>
+                                          <td className="py-1 px-2">
+                                            ₹{clientData.avgPrice.toFixed(1)}
+                                          </td>
+                                          <td className="py-1 px-2">
+                                            {clientData.dealCount}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
