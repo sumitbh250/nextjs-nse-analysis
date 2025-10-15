@@ -1,16 +1,57 @@
 import { NextResponse } from "next/server";
 import axios from 'axios';
 
+function buildBrowserHeaders(cookieString?: string) {
+  const headers: Record<string, string> = {
+    'User-Agent':
+      `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ` +
+      `(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36`,
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Referer': 'https://www.nseindia.com/',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Host': 'www.nseindia.com',
+    'Origin': 'https://www.nseindia.com',
+    'sec-ch-ua': '"Chromium";v="121", "Not(A:Brand";v="24", "Google Chrome";v="121"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Dest': 'document',
+  };
+  if (cookieString) {
+    headers['Cookie'] = cookieString;
+  }
+  return headers;
+}
+
+function toCookieString(setCookieHeaders: string[] | undefined): string {
+  if (!setCookieHeaders || setCookieHeaders.length === 0) return '';
+  const nameValuePairs = setCookieHeaders
+    .map((c) => c.split(';')[0])
+    .filter(Boolean);
+  return nameValuePairs.join('; ');
+}
+
+async function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function tryGet(url: string, headers: Record<string, string>) {
+  try {
+    return await axios.get(url, { headers, validateStatus: () => true });
+  } catch (e) {
+    return undefined;
+  }
+}
+
 async function fetchMarketCapAndAsk(symbol: string, cookies: string[]): Promise<{marketCap: number, askPrice: number}> {
   try {
     const response = await axios.get(`https://www.nseindia.com/api/quote-equity?symbol=${symbol}&section=trade_info`, {
-      headers: {
-        'User-Agent':
-          `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ` +
-          `(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36`,
-        'Accept': 'application/json, text/plain, */*',
-        'Cookie': cookies.join('; '),
-      },
+      headers: buildBrowserHeaders(cookies && cookies.length ? toCookieString(cookies) : undefined),
     });
 
     // Use totalMarketCap directly from the API response (already in crores)
@@ -87,38 +128,44 @@ export async function GET(request: Request) {
       );
     }
 
-    // Step 1: Make the initial request to get cookies
-    const initialResponse = await axios.get('https://www.nseindia.com', {
-      headers: {
-        'User-Agent':
-          `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ` +
-          `(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36`,
-        'Accept':
-          'text/html,application/xhtml+xml,application/xml;q=0.9,' +
-          'image/avif,image/webp,image/apng,*/*;q=0.8',
-      },
-    }).catch(error => {
-      console.error('Error fetching initial cookies:', error);
-      throw error;
-    });
+    // Step 1: Make the initial request to get cookies (resilient bootstrap)
+    const cookies: string[] = [];
+    let cookieString = '';
 
-    const cookies = initialResponse.headers['set-cookie'] || [];
+    const bootstrapUrls = [
+      'https://www.nseindia.com/',
+      'https://www.nseindia.com/get-quotes/equity?symbol=NIFTYBEES',
+      'https://www.nseindia.com/market-data',
+    ];
+
+    for (let i = 0; i < bootstrapUrls.length && cookieString === ''; i++) {
+      const url = bootstrapUrls[i];
+      const resp = await tryGet(url, buildBrowserHeaders());
+      if (resp && resp.status < 400) {
+        const setCookie = resp.headers['set-cookie'] || [];
+        if (setCookie.length > 0) {
+          cookies.push(...setCookie);
+          cookieString = toCookieString(cookies);
+          break;
+        }
+      }
+      await delay(300);
+    }
+
+    if (!cookieString) {
+      console.error('Error fetching initial cookies: no cookies obtained from bootstrap');
+      throw new Error('Failed to obtain cookies');
+    }
 
     // Step 1.5: Fetch additional cookies from /get-quotes/equity?symbol=NIFTYBEES
     try {
       const niftyBeesResponse = await axios.get('https://www.nseindia.com/get-quotes/equity?symbol=NIFTYBEES', {
-        headers: {
-          'User-Agent':
-            `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ` +
-            `(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36`,
-          'Accept':
-            'text/html,application/xhtml+xml,application/xml;q=0.9,' +
-            'image/avif,image/webp,image/apng,*/*;q=0.8',
-        },
+        headers: buildBrowserHeaders(cookieString),
       });
 
       const niftyBeesCookies = niftyBeesResponse.headers['set-cookie'] || [];
       cookies.push(...niftyBeesCookies);
+      cookieString = toCookieString(cookies);
     } catch (error) {
       console.error('Error fetching NIFTYBEES cookies:', error);
       // Do not re-throw, as this is not critical
@@ -130,11 +177,10 @@ export async function GET(request: Request) {
 
     const bulkBlockResponse = await axios.get(bulkBlockDealsUrl, {
       headers: {
-        'User-Agent':
-          `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ` +
-          `(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36`,
+        ...buildBrowserHeaders(cookieString),
         'Accept': 'text/csv, text/plain, */*',
-        'Cookie': cookies.join('; '),
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Dest': 'empty',
       },
     }).catch(error => {
       console.error('Error fetching Bulk/Block deals data:', error);
