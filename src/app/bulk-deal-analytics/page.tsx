@@ -117,7 +117,7 @@ export default function BulkDealAnalyticsPage() {
   }
 
   function formatMarketCap(value: number): string {
-    if (value === 0) return 'N/A';
+    if (!value || value === 0) return 'Not found';
     if (value >= 1000) {
       return `₹${(value / 1000).toFixed(1)}K Cr`;
     }

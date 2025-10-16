@@ -11,6 +11,7 @@ export default function BigDealsPage() {
     { key: "BD_DT_DATE", label: "DATE" },
     { key: "BD_SYMBOL", label: "SYMBOL" },
     { key: "BD_SCRIP_NAME", label: "COMPANY NAME" },
+    { key: "MARKET_CAP", label: "MARKET CAP (Cr)" },
     { key: "BD_CLIENT_NAME", label: "CLIENT NAME" },
     { key: "BD_BUY_SELL", label: "BUY/SELL" },
     { key: "BD_QTY_TRD", label: "QUANTITY" },
@@ -103,7 +104,14 @@ export default function BigDealsPage() {
       );
       const data = await response.json();
       console.log('Bulk/Block deals data:', data);
-      setDealsData(data);
+      const marketCapMap = (data && data.marketCapData) ? data.marketCapData : {};
+      const enrichedRows = (data && Array.isArray(data.data)) ? data.data.map((row: any) => ({
+        ...row,
+        MARKET_CAP: (row && row.BD_SYMBOL && marketCapMap[row.BD_SYMBOL] !== undefined)
+          ? marketCapMap[row.BD_SYMBOL]
+          : 'Not found'
+      })) : [];
+      setDealsData({ ...data, data: enrichedRows });
     } catch (error) {
       console.error('Error fetching deals data:', error);
     } finally {
