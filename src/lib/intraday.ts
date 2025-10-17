@@ -25,13 +25,14 @@ export function isIntradayTrade(deal: DealData, allDeals: DealData[]): boolean {
     .filter(d => d.BD_BUY_SELL === 'SELL')
     .reduce((sum, d) => sum + d.BD_QTY_TRD, 0);
     
-  const netPosition = totalBought - totalSold;
   const totalVolume = totalBought + totalSold;
   
-  // Tolerance: 1% of total volume or 100 shares, whichever is higher
-  const tolerance = Math.max(100, totalVolume * 0.01);
+  // Buffer: 5% of total volume or 100 shares, whichever is higher
+  const buffer = Math.max(100, totalVolume * 0.05);
   
-  return Math.abs(netPosition) <= tolerance;
+  // Check if buy and sell quantities are within buffer of each other
+  // This means the client roughly balanced their position on the same day
+  return Math.abs(totalBought - totalSold) <= buffer;
 }
 
 export function filterIntradayDeals(deals: DealData[], hideIntraday: boolean): DealData[] {
