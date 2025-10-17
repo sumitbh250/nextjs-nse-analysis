@@ -1,20 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { FaSyncAlt, FaChevronDown, FaChevronRight, FaSortUp, FaSortDown, FaSort, FaUser, FaBuilding, FaSearch } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaSortUp, FaSortDown, FaSort, FaUser, FaBuilding, FaSearch } from 'react-icons/fa';
 import Navigation from '@/app/component/Navigation';
 import Documentation from '@/app/component/Documentation';
-
-interface DealData {
-  BD_DT_DATE: string;
-  BD_SYMBOL: string;
-  BD_SCRIP_NAME: string;
-  BD_CLIENT_NAME: string;
-  BD_BUY_SELL: string;
-  BD_QTY_TRD: number;
-  BD_TP_WATP: number;
-  BD_REMARKS: string;
-}
+import { useDealPageState } from '@/lib/hooks';
+import { FilterSection, PageHeader, LoadingState, EmptyState } from '@/lib/ui-components';
+import { getDateRange, formatNumber, formatMarketCap, formatPrice, DealData } from '@/lib/common';
+import { sortAnalyticsData } from '@/lib/analytics-utils';
 
 interface ClientStockAnalyticsData {
   clientName: string;
@@ -39,132 +32,41 @@ interface ClientStockAnalyticsData {
 
 type SortField = 'clientName' | 'symbol' | 'companyName' | 'totalShares' | 'netValue' | 'totalValueBought' | 'totalValueSold' | 'dealCount' | 'avgBuyPrice' | 'avgSellPrice' | 'marketCap' | 'price';
 type SortDirection = 'asc' | 'desc';
-type DealType = 'bulk' | 'block' | 'both';
 
 export default function ClientStockAnalyticsPage() {
+  const {
+    loading,
+    dealsData,
+    dealType,
+    dateFilter,
+    fromDate,
+    toDate,
+    hideIntraday,
+    intradayStats,
+    handleDealTypeChange,
+    handleTimeRangeChange,
+    handleIntradayToggle,
+    handleDateChange,
+    refreshData
+  } = useDealPageState();
+
   const [analyticsData, setAnalyticsData] = useState<ClientStockAnalyticsData[]>([]);
   const [filteredData, setFilteredData] = useState<ClientStockAnalyticsData[]>([]);
-  const [loading, setLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField>('netValue');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [dateFilter, setDateFilter] = useState('1W');
-  const [customFromDate, setCustomFromDate] = useState('');
-  const [customToDate, setCustomToDate] = useState('');
-  const [dealType, setDealType] = useState<DealType>('both');
   const [clientFilter, setClientFilter] = useState('');
   const [stockFilter, setStockFilter] = useState('');
   const [showAllDeals, setShowAllDeals] = useState<Set<string>>(new Set());
 
-  const dateFilters = [
-    { label: '1D', days: 1 },
-    { label: '1W', days: 7 },
-    { label: '1M', days: 30 },
-    { label: '3M', days: 90 },
-    { label: '6M', days: 180 },
-    { label: '1Y', days: 365 },
-  ];
-
-  function getDateRange() {
-    if (dateFilter === 'Custom') {
-      return {
-        from: customFromDate ? formatDateForAPI(customFromDate) : '',
-        to: customToDate ? formatDateForAPI(customToDate) : '',
-        fromDisplay: customFromDate ? formatDateForAPI(customFromDate) : '',
-        toDisplay: customToDate ? formatDateForAPI(customToDate) : ''
-      };
+  // Process client-stock data when deals data changes
+  useEffect(() => {
+    if (dealsData && dealsData.deals && dealsData.deals.length > 0) {
+      const aggregated = aggregateClientStockData(dealsData.deals, dealsData.marketCapData, dealsData.priceData);
+      setAnalyticsData(aggregated);
+      setFilteredData(aggregated);
     }
-
-    const today = new Date();
-    const fromDate = new Date(today);
-    const selectedFilter = dateFilters.find(f => f.label === dateFilter);
-    if (selectedFilter) {
-      fromDate.setDate(today.getDate() - selectedFilter.days);
-    }
-
-    return {
-      from: formatDateForAPI(fromDate.toISOString().split('T')[0]),
-      to: formatDateForAPI(today.toISOString().split('T')[0]),
-      fromDisplay: formatDateForAPI(fromDate.toISOString().split('T')[0]),
-      toDisplay: formatDateForAPI(today.toISOString().split('T')[0])
-    };
-  }
-
-  function formatDateForAPI(dateString: string): string {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
-
-  function formatNumber(value: number): string {
-    return new Intl.NumberFormat('en-IN').format(value);
-  }
-
-  function formatMarketCap(value: number): string {
-    if (!value || value === 0) return 'Not found';
-    if (value >= 1000) {
-      return `₹${(value / 1000).toFixed(1)}K Cr`;
-    }
-    return `₹${value.toFixed(0)} Cr`;
-  }
-
-  function formatPrice(value: number): string {
-    if (!value || value === 0) return 'Not found';
-    return `₹${value.toFixed(2)}`;
-  }
-
-  async function fetchClientStockData() {
-    setLoading(true);
-    try {
-      const { from, to } = getDateRange();
-      if (!from || !to) {
-        alert('Please select valid date range');
-        return;
-      }
-
-      let allDeals: DealData[] = [];
-      let allMarketCapData: Record<string, number> = {};
-      let allPriceData: Record<string, number> = {};
-
-      // Fetch based on deal type selection
-      if (dealType === 'both') {
-        const [bulkResponse, blockResponse] = await Promise.all([
-          fetch(`/api/fetchBulkBlockDeals?optionType=bulk_deals&from=${from}&to=${to}`),
-          fetch(`/api/fetchBulkBlockDeals?optionType=block_deals&from=${from}&to=${to}`)
-        ]);
-
-        const bulkData = await bulkResponse.json();
-        const blockData = await blockResponse.json();
-
-        allDeals = [...(bulkData.data || []), ...(blockData.data || [])];
-        allMarketCapData = { ...(bulkData.marketCapData || {}), ...(blockData.marketCapData || {}) };
-        allPriceData = { ...(bulkData.priceData || {}), ...(blockData.priceData || {}) };
-      } else {
-        const response = await fetch(
-          `/api/fetchBulkBlockDeals?optionType=${dealType}_deals&from=${from}&to=${to}`
-        );
-        const data = await response.json();
-        allDeals = data.data || [];
-        allMarketCapData = data.marketCapData || {};
-        allPriceData = data.priceData || {};
-      }
-
-      if (allDeals.length > 0) {
-        const aggregated = aggregateClientStockData(allDeals, allMarketCapData, allPriceData);
-        setAnalyticsData(aggregated);
-        setFilteredData(aggregated);
-      } else {
-        setAnalyticsData([]);
-        setFilteredData([]);
-      }
-    } catch (error) {
-      console.error('Error fetching client-stock data:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [dealsData]);
 
   function aggregateClientStockData(deals: DealData[], marketCapData: Record<string, number> = {}, priceData: Record<string, number> = {}): ClientStockAnalyticsData[] {
     const clientStockGroups: { [key: string]: DealData[] } = {};
@@ -264,16 +166,7 @@ export default function ClientStockAnalyticsPage() {
   }
 
   function getSortedData() {
-    return [...filteredData].sort((a, b) => {
-      const aVal = a[sortField];
-      const bVal = b[sortField];
-      const multiplier = sortDirection === 'asc' ? 1 : -1;
-
-      if (typeof aVal === 'string' && typeof bVal === 'string') {
-        return aVal.localeCompare(bVal) * multiplier;
-      }
-      return (Number(aVal) - Number(bVal)) * multiplier;
-    });
+    return sortAnalyticsData(filteredData, sortField, sortDirection);
   }
 
   function toggleRowExpansion(key: string) {
@@ -302,59 +195,40 @@ export default function ClientStockAnalyticsPage() {
   }
 
   useEffect(() => {
-    fetchClientStockData();
-  }, [dateFilter, dealType]);
-
-  useEffect(() => {
     applyFilters();
   }, [clientFilter, stockFilter, analyticsData]);
 
   const sortedData = getSortedData();
-  const { fromDisplay, toDisplay } = getDateRange();
+  const dateRange = getDateRange(dateFilter, fromDate, toDate);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-blue-900 dark:to-indigo-900">
       <Navigation />
       <Documentation />
 
-      {/* Header */}
-      <div className="px-4 py-3">
-        <div className="flex justify-between items-center mb-3">
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              <FaUser className="inline mr-2" /><FaBuilding className="inline mr-2" /> Client-Stock Analytics
-            </h1>
-            <div className="text-xs text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded px-2 py-1 inline-block mt-1">
-              📊 {fromDisplay} to {toDisplay} • {dealType === 'both' ? 'Bulk + Block' : `${dealType.charAt(0).toUpperCase() + dealType.slice(1)} Deals`}
-            </div>
-          </div>
-          <button
-            onClick={fetchClientStockData}
-            disabled={loading}
-            className="flex items-center px-4 py-2 text-sm text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg"
-          >
-            <FaSyncAlt className={loading ? 'animate-spin mr-2' : 'mr-2'} size={12} />
-            {loading ? 'Loading...' : 'Refresh'}
-          </button>
-        </div>
+      <PageHeader
+        title="Client-Stock Analytics"
+        dateRange={dateRange}
+        onRefresh={refreshData}
+        loading={loading}
+        intradayStats={intradayStats}
+        hideIntraday={hideIntraday}
+      />
 
-        {/* Deal Type Filter */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">📋 Deal Type:</span>
-          {(['bulk', 'block', 'both'] as DealType[]).map((type) => (
-            <button
-              key={type}
-              onClick={() => setDealType(type)}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-all duration-200 ${
-                dealType === type
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
-              }`}
-            >
-              {type === 'both' ? '🔄 Both' : type === 'bulk' ? '📦 Bulk' : '🏗️ Block'}
-            </button>
-          ))}
-        </div>
+      <div className="px-4 py-3">
+        <FilterSection
+          dealType={dealType}
+          onDealTypeChange={handleDealTypeChange}
+          dateFilter={dateFilter}
+          onDateFilterChange={handleTimeRangeChange}
+          fromDate={fromDate}
+          toDate={toDate}
+          onCustomDateChange={handleDateChange}
+          hideIntraday={hideIntraday}
+          onIntradayToggle={handleIntradayToggle}
+          onRefresh={refreshData}
+          loading={loading}
+        />
 
         {/* Search Filters */}
         <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-lg shadow-sm border border-white/20">
@@ -391,73 +265,11 @@ export default function ClientStockAnalyticsPage() {
             </button>
           )}
         </div>
-
-        {/* Date Filters */}
-        <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-lg shadow-sm border border-white/20">
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">📅</span>
-          {dateFilters.map((filter) => (
-            <button
-              key={filter.label}
-              onClick={() => setDateFilter(filter.label)}
-              className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
-                dateFilter === filter.label
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
-                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-          <button
-            onClick={() => setDateFilter('Custom')}
-            className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
-              dateFilter === 'Custom'
-                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm'
-                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600'
-            }`}
-          >
-            Custom
-          </button>
-
-          {dateFilter === 'Custom' && (
-            <>
-              <input
-                type="date"
-                value={customFromDate}
-                onChange={(e) => setCustomFromDate(e.target.value)}
-                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              />
-              <span className="text-xs text-gray-500">to</span>
-              <input
-                type="date"
-                value={customToDate}
-                onChange={(e) => setCustomToDate(e.target.value)}
-                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              />
-              <button
-                onClick={fetchClientStockData}
-                disabled={loading}
-                className="px-3 py-1 text-xs text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-400 rounded transition-all duration-200 shadow-sm"
-              >
-                Apply
-              </button>
-            </>
-          )}
-        </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="text-center py-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg mb-3">
-            <FaSyncAlt className="w-6 h-6 text-white animate-spin" />
-          </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Loading client-stock analytics...</p>
-        </div>
-      )}
-
-      {/* Client-Stock Analytics Table */}
-      {sortedData.length > 0 ? (
+      {loading ? (
+        <LoadingState message="Loading client-stock analytics..." />
+      ) : sortedData.length > 0 ? (
         <div className="mx-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-white/20">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-700">
             <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -655,7 +467,8 @@ export default function ClientStockAnalyticsPage() {
                                   <thead>
                                     <tr className="border-b border-gray-300 dark:border-gray-600">
                                       <th className="text-left py-1 px-2 font-medium">Date</th>
-                                      <th className="text-left py-1 px-2 font-medium">Type</th>
+                                      <th className="text-left py-1 px-2 font-medium">Deal Type</th>
+                                      <th className="text-left py-1 px-2 font-medium">Buy/Sell</th>
                                       <th className="text-left py-1 px-2 font-medium">Qty</th>
                                       <th className="text-left py-1 px-2 font-medium">Price</th>
                                       <th className="text-left py-1 px-2 font-medium">Value</th>
@@ -666,6 +479,17 @@ export default function ClientStockAnalyticsPage() {
                                     {(showAllDeals.has(rowKey) ? row.deals : row.deals.slice(0, 5)).map((deal, index) => (
                                       <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
                                         <td className="py-1 px-2">{deal.BD_DT_DATE}</td>
+                                        <td className="py-1 px-2">
+                                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                            deal.DEAL_TYPE === 'BULK' 
+                                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                                              : deal.DEAL_TYPE === 'BLOCK'
+                                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                              : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                          }`}>
+                                            {deal.DEAL_TYPE || 'N/A'}
+                                          </span>
+                                        </td>
                                         <td className={`py-1 px-2 font-medium ${
                                           deal.BD_BUY_SELL === 'BUY' ? 'text-green-600' : 'text-red-600'
                                         }`}>
@@ -694,18 +518,14 @@ export default function ClientStockAnalyticsPage() {
           </div>
         </div>
       ) : (
-        !loading && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">👥🏢</div>
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">No client-stock data available</p>
-            <p className="text-sm text-gray-500 dark:text-gray-500">
-              {analyticsData.length === 0 ?
-                'Select a date range and deal type to view analytics' :
-                'No results match your current filters'
-              }
-            </p>
-          </div>
-        )
+        <EmptyState
+          icon="👥🏢"
+          title="No client-stock data available"
+          subtitle={analyticsData.length === 0 ? 
+            'Select a date range and deal type to view analytics' : 
+            'No results match your current filters'
+          }
+        />
       )}
     </div>
   );

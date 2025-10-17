@@ -1,7 +1,120 @@
 // Analytics utility functions
 
 import { DealData, formatNumber, formatMarketCap, formatPrice } from './common';
-import { AggregatedData, ClientAggregatedData, DateAggregatedData, SortField, SortDirection } from './hooks';
+import { AggregatedData, DateAggregatedData, SortField, SortDirection } from './hooks';
+
+// Additional interfaces for client analytics
+export interface ClientStockData {
+  symbol: string;
+  companyName: string;
+  totalShares: number; // net position (bought - sold)
+  totalBought: number;
+  totalSold: number;
+  totalValueBought: number;
+  totalValueSold: number;
+  netValue: number;
+  dealCount: number;
+  avgBuyPrice: number;
+  avgSellPrice: number;
+  deals: DealData[];
+}
+
+export interface ClientAnalyticsData {
+  clientName: string;
+  totalBought: number; // total shares bought across all stocks
+  totalSold: number; // total shares sold across all stocks
+  totalValueBought: number; // total value bought
+  totalValueSold: number; // total value sold
+  netValue: number; // net value (bought - sold)
+  uniqueStocks: number;
+  totalDeals: number;
+  stockData: ClientStockData[];
+}
+
+/**
+ * Aggregates client data from deals
+ */
+export function aggregateClientData(deals: DealData[]): ClientAnalyticsData[] {
+  const clientGroups: { [clientName: string]: { [symbol: string]: DealData[] } } = {};
+
+  // Group deals by client and then by symbol
+  deals.forEach(deal => {
+    if (!clientGroups[deal.BD_CLIENT_NAME]) {
+      clientGroups[deal.BD_CLIENT_NAME] = {};
+    }
+    if (!clientGroups[deal.BD_CLIENT_NAME][deal.BD_SYMBOL]) {
+      clientGroups[deal.BD_CLIENT_NAME][deal.BD_SYMBOL] = [];
+    }
+    clientGroups[deal.BD_CLIENT_NAME][deal.BD_SYMBOL].push(deal);
+  });
+
+  // Process each client
+  const clientData = Object.entries(clientGroups).map(([clientName, symbolDeals]) => {
+    let totalBought = 0;
+    let totalSold = 0;
+    let totalValueBought = 0;
+    let totalValueSold = 0;
+    let totalDeals = 0;
+
+    const stockData: ClientStockData[] = Object.entries(symbolDeals).map(([symbol, deals]) => {
+      let stockBought = 0;
+      let stockSold = 0;
+      let stockValueBought = 0;
+      let stockValueSold = 0;
+      let buyPriceWeighted = 0;
+      let sellPriceWeighted = 0;
+
+      deals.forEach(deal => {
+        const dealValue = deal.BD_QTY_TRD * deal.BD_TP_WATP;
+
+        if (deal.BD_BUY_SELL === 'BUY') {
+          stockBought += deal.BD_QTY_TRD;
+          stockValueBought += dealValue;
+          buyPriceWeighted += dealValue;
+        } else {
+          stockSold += deal.BD_QTY_TRD;
+          stockValueSold += dealValue;
+          sellPriceWeighted += dealValue;
+        }
+      });
+
+      totalBought += stockBought;
+      totalSold += stockSold;
+      totalValueBought += stockValueBought;
+      totalValueSold += stockValueSold;
+      totalDeals += deals.length;
+
+      return {
+        symbol,
+        companyName: deals[0].BD_SCRIP_NAME,
+        totalShares: stockBought - stockSold,
+        totalBought: stockBought,
+        totalSold: stockSold,
+        totalValueBought: stockValueBought,
+        totalValueSold: stockValueSold,
+        netValue: stockValueBought - stockValueSold,
+        dealCount: deals.length,
+        avgBuyPrice: stockBought > 0 ? buyPriceWeighted / stockBought : 0,
+        avgSellPrice: stockSold > 0 ? sellPriceWeighted / stockSold : 0,
+        deals: deals.sort((a, b) => new Date(b.BD_DT_DATE).getTime() - new Date(a.BD_DT_DATE).getTime())
+      };
+    });
+
+    return {
+      clientName,
+      totalBought,
+      totalSold,
+      totalValueBought,
+      totalValueSold,
+      netValue: totalValueBought - totalValueSold,
+      uniqueStocks: stockData.length,
+      totalDeals,
+      stockData: stockData.sort((a, b) => Math.abs(b.netValue) - Math.abs(a.netValue))
+    };
+  });
+
+  return clientData.sort((a, b) => b.totalValueBought - a.totalValueBought);
+}
 
 /**
  * Aggregates deals data by symbol
@@ -75,7 +188,7 @@ export function aggregateDealsData(
 /**
  * Aggregates client data for a specific symbol
  */
-export function aggregateClientDataForSymbol(deals: DealData[], symbol: string): ClientAggregatedData[] {
+export function aggregateClientDataForSymbol(deals: DealData[], symbol: string): any[] {
   const clientDeals = deals.filter(deal => deal.BD_SYMBOL === symbol);
   const grouped = clientDeals.reduce((acc, deal) => {
     const key = deal.BD_CLIENT_NAME;
@@ -184,14 +297,14 @@ export function aggregateDateDataForSymbol(deals: DealData[], symbol: string): D
 /**
  * Sorts analytics data by field and direction
  */
-export function sortAnalyticsData(
-  data: AggregatedData[],
-  field: SortField,
+export function sortAnalyticsData<T>(
+  data: T[],
+  field: keyof T | string,
   direction: SortDirection
-): AggregatedData[] {
+): T[] {
   return [...data].sort((a, b) => {
-    const aVal = a[field];
-    const bVal = b[field];
+    const aVal = (a as any)[field];
+    const bVal = (b as any)[field];
     const multiplier = direction === 'asc' ? 1 : -1;
 
     if (typeof aVal === 'string' && typeof bVal === 'string') {
