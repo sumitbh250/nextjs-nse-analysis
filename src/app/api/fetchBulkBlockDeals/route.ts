@@ -24,6 +24,15 @@ export async function GET(request: Request) {
       );
     }
 
+    // Validate date format (should be DD-MM-YYYY)
+    const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
+    if (!dateRegex.test(fromDate) || !dateRegex.test(toDate)) {
+      return NextResponse.json(
+        { error: 'Dates must be in DD-MM-YYYY format' },
+        { status: 400 }
+      );
+    }
+
     // Step 1: Make the initial request to get cookies (resilient bootstrap)
     const cookies: string[] = [];
     let cookieString = '';
@@ -80,6 +89,8 @@ export async function GET(request: Request) {
       },
     }).catch(error => {
       console.error('Error fetching Bulk/Block deals data:', error);
+      console.error('Request URL:', bulkBlockDealsUrl);
+      console.error('Request headers:', buildBrowserHeaders(cookieString));
       throw error;
     });
 
