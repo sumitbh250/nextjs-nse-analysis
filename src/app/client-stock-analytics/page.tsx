@@ -32,10 +32,12 @@ interface ClientStockAnalyticsData {
   weightedAvgPrice: number;
   firstDealDate: string;
   lastDealDate: string;
+  marketCap: number;
+  price: number;
   deals: DealData[];
 }
 
-type SortField = 'clientName' | 'symbol' | 'companyName' | 'totalShares' | 'netValue' | 'totalValueBought' | 'totalValueSold' | 'dealCount' | 'avgBuyPrice' | 'avgSellPrice';
+type SortField = 'clientName' | 'symbol' | 'companyName' | 'totalShares' | 'netValue' | 'totalValueBought' | 'totalValueSold' | 'dealCount' | 'avgBuyPrice' | 'avgSellPrice' | 'marketCap' | 'price';
 type SortDirection = 'asc' | 'desc';
 type DealType = 'bulk' | 'block' | 'both';
 
@@ -100,6 +102,19 @@ export default function ClientStockAnalyticsPage() {
     return new Intl.NumberFormat('en-IN').format(value);
   }
 
+  function formatMarketCap(value: number): string {
+    if (!value || value === 0) return 'Not found';
+    if (value >= 1000) {
+      return `₹${(value / 1000).toFixed(1)}K Cr`;
+    }
+    return `₹${value.toFixed(0)} Cr`;
+  }
+
+  function formatPrice(value: number): string {
+    if (!value || value === 0) return 'Not found';
+    return `₹${value.toFixed(2)}`;
+  }
+
   async function fetchClientStockData() {
     setLoading(true);
     try {
@@ -110,6 +125,8 @@ export default function ClientStockAnalyticsPage() {
       }
 
       let allDeals: DealData[] = [];
+      let allMarketCapData: Record<string, number> = {};
+      let allPriceData: Record<string, number> = {};
 
       // Fetch based on deal type selection
       if (dealType === 'both') {
@@ -122,16 +139,20 @@ export default function ClientStockAnalyticsPage() {
         const blockData = await blockResponse.json();
 
         allDeals = [...(bulkData.data || []), ...(blockData.data || [])];
+        allMarketCapData = { ...(bulkData.marketCapData || {}), ...(blockData.marketCapData || {}) };
+        allPriceData = { ...(bulkData.priceData || {}), ...(blockData.priceData || {}) };
       } else {
         const response = await fetch(
           `/api/fetchBulkBlockDeals?optionType=${dealType}_deals&from=${from}&to=${to}`
         );
         const data = await response.json();
         allDeals = data.data || [];
+        allMarketCapData = data.marketCapData || {};
+        allPriceData = data.priceData || {};
       }
 
       if (allDeals.length > 0) {
-        const aggregated = aggregateClientStockData(allDeals);
+        const aggregated = aggregateClientStockData(allDeals, allMarketCapData, allPriceData);
         setAnalyticsData(aggregated);
         setFilteredData(aggregated);
       } else {
@@ -145,7 +166,7 @@ export default function ClientStockAnalyticsPage() {
     }
   }
 
-  function aggregateClientStockData(deals: DealData[]): ClientStockAnalyticsData[] {
+  function aggregateClientStockData(deals: DealData[], marketCapData: Record<string, number> = {}, priceData: Record<string, number> = {}): ClientStockAnalyticsData[] {
     const clientStockGroups: { [key: string]: DealData[] } = {};
 
     // Group deals by client-stock combination
@@ -205,6 +226,8 @@ export default function ClientStockAnalyticsPage() {
         weightedAvgPrice: totalQtyForAvg > 0 ? totalValueWeighted / totalQtyForAvg : 0,
         firstDealDate: sortedDeals[0].BD_DT_DATE,
         lastDealDate: sortedDeals[sortedDeals.length - 1].BD_DT_DATE,
+        marketCap: marketCapData[symbol] || 0,
+        price: priceData[symbol] || 0,
         deals: deals.sort((a, b) => new Date(b.BD_DT_DATE).getTime() - new Date(a.BD_DT_DATE).getTime())
       };
     });
@@ -477,6 +500,24 @@ export default function ClientStockAnalyticsPage() {
                   </th>
                   <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     <button
+                      onClick={() => handleSort('marketCap')}
+                      className="flex items-center space-x-1 hover:text-blue-600"
+                    >
+                      <span>MCAP</span>
+                      {getSortIcon('marketCap')}
+                    </button>
+                  </th>
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                    <button
+                      onClick={() => handleSort('price')}
+                      className="flex items-center space-x-1 hover:text-blue-600"
+                    >
+                      <span>PRICE</span>
+                      {getSortIcon('price')}
+                    </button>
+                  </th>
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                    <button
                       onClick={() => handleSort('totalShares')}
                       className="flex items-center space-x-1 hover:text-blue-600"
                     >
@@ -541,6 +582,12 @@ export default function ClientStockAnalyticsPage() {
                         </td>
                         <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[120px] truncate" title={row.companyName}>
                           {row.companyName}
+                        </td>
+                        <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
+                          {formatMarketCap(row.marketCap)}
+                        </td>
+                        <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
+                          {formatPrice(row.price)}
                         </td>
                         <td className={`px-2 py-2 text-xs font-medium ${
                           row.totalShares > 0 ? 'text-green-600 dark:text-green-400' :

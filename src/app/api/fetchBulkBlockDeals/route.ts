@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import axios from 'axios';
 import { buildBrowserHeaders, toCookieString, delay, tryGet } from '@/lib/http';
-import { fetchMarketCapMapFromSheet } from '@/lib/marketcap';
+import { fetchStockDataFromSheet } from '@/lib/stockdata';
 import { parseCSVToJSON } from '@/lib/csv';
 
 // shared helpers imported
@@ -87,16 +87,17 @@ export async function GET(request: Request) {
     const csvData = bulkBlockResponse.data;
     const dealsData = parseCSVToJSON(csvData);
 
-    // Fetch market cap map from Google Sheet in parallel with any future tasks
-    const marketCapMapPromise = fetchMarketCapMapFromSheet();
+    // Fetch market cap and price maps from Google Sheet
+    const sheetDataPromise = fetchStockDataFromSheet();
 
     // Step 4: Extract unique symbols and fetch market cap data
     if (dealsData && Array.isArray(dealsData)) {
-      // Enrich response with market cap map from Google Sheet
-      const marketCapMap = await marketCapMapPromise;
+      // Enrich response with market cap and price maps from Google Sheet
+      const sheetData = await sheetDataPromise;
       const response = {
         data: dealsData,
-        marketCapData: marketCapMap,
+        marketCapData: sheetData.marketCap,
+        priceData: sheetData.price,
         askPriceData: {},
         totalRecords: dealsData.length,
         dataSource: 'CSV'

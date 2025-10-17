@@ -29,18 +29,11 @@ export default function Navigation() {
       color: 'from-orange-500 to-red-600'
     },
     {
-      label: 'Bulk Analytics',
-      href: '/bulk-deal-analytics',
+      label: 'Deal Analytics',
+      href: '/deal-analytics',
       icon: <FaChartBar className="w-4 h-4" />,
-      active: pathname === '/bulk-deal-analytics',
+      active: pathname === '/deal-analytics',
       color: 'from-purple-500 to-pink-600'
-    },
-    {
-      label: 'Block Analytics',
-      href: '/block-deal-analytics',
-      icon: <FaUsers className="w-4 h-4" />,
-      active: pathname === '/block-deal-analytics',
-      color: 'from-indigo-500 to-purple-600'
     },
     {
       label: 'Client Analytics',

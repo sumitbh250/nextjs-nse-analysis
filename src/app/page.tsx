@@ -23,19 +23,11 @@ export default function HomePage() {
       category: "Raw Data"
     },
     {
-      title: "Bulk Deal Analytics",
-      description: "Stock-focused analysis of bulk deals with client breakdowns",
+      title: "Deal Analytics",
+      description: "Comprehensive analysis of bulk and block deals with multiple aggregation views",
       icon: <FaChartBar className="w-6 h-6" />,
-      href: "/bulk-deal-analytics",
+      href: "/deal-analytics",
       gradient: "from-purple-500 to-pink-600",
-      category: "Deal Analytics"
-    },
-    {
-      title: "Block Deal Analytics",
-      description: "Stock-focused analysis of block deals showing institutional patterns",
-      icon: <FaUsers className="w-6 h-6" />,
-      href: "/block-deal-analytics",
-      gradient: "from-indigo-500 to-purple-600",
       category: "Deal Analytics"
     },
     {

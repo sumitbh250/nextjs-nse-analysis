@@ -1,28 +1,37 @@
 import axios from 'axios';
 
-export async function fetchMarketCapMapFromSheet(): Promise<Record<string, number>> {
+export async function fetchStockDataFromSheet(): Promise<{marketCap: Record<string, number>, price: Record<string, number>}> {
   const SHEET_ID = '1GgVqoQ96kED7U_6oHDKTxesQtva5a-vobZDjfYdRau8';
   const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
   try {
     const resp = await axios.get(csvUrl, { responseType: 'text', validateStatus: () => true });
     if (resp.status >= 200 && resp.status < 300 && typeof resp.data === 'string') {
       const lines = String(resp.data).split(/\r?\n/).filter(Boolean);
-      if (lines.length < 2) return {};
+      if (lines.length < 2) return { marketCap: {}, price: {} };
       const header = lines[0].split(',').map(h => h.trim().toLowerCase());
       const symbolIdx = header.findIndex(h => h.includes('symbol'));
       const mcapIdx = header.findIndex(h => h.includes('market') && h.includes('cap'));
-      if (symbolIdx === -1 || mcapIdx === -1) return {};
-      const map: Record<string, number> = {};
+      const priceIdx = header.findIndex(h => h.includes('price'));
+      if (symbolIdx === -1 || mcapIdx === -1) return { marketCap: {}, price: {} };
+      const marketCapMap: Record<string, number> = {};
+      const priceMap: Record<string, number> = {};
       for (let i = 1; i < lines.length; i++) {
         const row = lines[i].split(',');
         const symbol = (row[symbolIdx] || '').trim().replace(/^"|"$/g, '');
-        const valRaw = (row[mcapIdx] || '').trim().replace(/^"|"$/g, '');
-        const value = Number(valRaw.replace(/,/g, ''));
-        if (symbol && !Number.isNaN(value)) {
-          map[symbol] = value;
+        const mcapRaw = (row[mcapIdx] || '').trim().replace(/^"|"$/g, '');
+        const mcapValue = Number(mcapRaw.replace(/,/g, ''));
+        if (symbol && !Number.isNaN(mcapValue)) {
+          marketCapMap[symbol] = mcapValue;
+        }
+        if (priceIdx !== -1) {
+          const priceRaw = (row[priceIdx] || '').trim().replace(/^"|"$/g, '');
+          const priceValue = Number(priceRaw.replace(/,/g, ''));
+          if (symbol && !Number.isNaN(priceValue)) {
+            priceMap[symbol] = priceValue;
+          }
         }
       }
-      return map;
+      return { marketCap: marketCapMap, price: priceMap };
     }
   } catch (e) {
     // ignore and fallback
@@ -40,22 +49,28 @@ export async function fetchMarketCapMapFromSheet(): Promise<Record<string, numbe
         const label = String(c?.label || '').toLowerCase();
         return label.includes('market') && label.includes('cap');
       });
-      const map: Record<string, number> = {};
+      const priceIdx = cols.findIndex((c: any) => String(c?.label || '').toLowerCase().includes('price'));
+      const marketCapMap: Record<string, number> = {};
+      const priceMap: Record<string, number> = {};
       if (symbolIdx !== -1 && mcapIdx !== -1) {
         for (const r of rows) {
           const symbol = (r.c?.[symbolIdx]?.v || '').trim();
-          const value = Number(String(r.c?.[mcapIdx]?.v || '').replace(/,/g, ''));
-          if (symbol && !Number.isNaN(value)) {
-            map[symbol] = value;
+          const mcapValue = Number(String(r.c?.[mcapIdx]?.v || '').replace(/,/g, ''));
+          if (symbol && !Number.isNaN(mcapValue)) {
+            marketCapMap[symbol] = mcapValue;
+          }
+          if (priceIdx !== -1) {
+            const priceValue = Number(String(r.c?.[priceIdx]?.v || '').replace(/,/g, ''));
+            if (symbol && !Number.isNaN(priceValue)) {
+              priceMap[symbol] = priceValue;
+            }
           }
         }
       }
-      return map;
+      return { marketCap: marketCapMap, price: priceMap };
     }
   } catch (e) {
     // ignore
   }
-  return {};
+  return { marketCap: {}, price: {} };
 }
-
-

@@ -31,6 +31,7 @@ interface AggregatedData {
   minPrice: number;
   maxPrice: number;
   marketCap: number;
+  price: number;
   askPrice: number;
   deals: DealData[];
 }
@@ -46,11 +47,27 @@ interface ClientAggregatedData {
   deals: DealData[];
 }
 
-type SortField = 'symbol' | 'totalValueBought' | 'totalValueSold' | 'netValue' | 'dealCount' | 'marketCap' | 'askPrice';
-type SortDirection = 'asc' | 'desc';
-type ExpandedViewMode = 'deals' | 'clients';
+interface DateAggregatedData {
+  date: string;
+  symbol: string;
+  companyName: string;
+  totalBought: number;
+  totalSold: number;
+  totalValueBought: number;
+  totalValueSold: number;
+  netPosition: number;
+  netValue: number;
+  dealCount: number;
+  uniqueClients: number;
+  deals: DealData[];
+}
 
-export default function BulkDealAnalyticsPage() {
+type SortField = 'symbol' | 'totalValueBought' | 'totalValueSold' | 'netValue' | 'dealCount' | 'marketCap' | 'price' | 'askPrice';
+type SortDirection = 'asc' | 'desc';
+type ExpandedViewMode = 'deals' | 'clients' | 'dates';
+type DealType = 'bulk_deals' | 'block_deals' | 'both';
+
+export default function DealAnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<AggregatedData[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -61,6 +78,7 @@ export default function BulkDealAnalyticsPage() {
   const [customToDate, setCustomToDate] = useState('');
   const [expandedViewMode, setExpandedViewMode] = useState<Map<string, ExpandedViewMode>>(new Map());
   const [showAllDeals, setShowAllDeals] = useState<Set<string>>(new Set());
+  const [dealType, setDealType] = useState<DealType>('both');
 
   const dateFilters = [
     { label: '1D', days: 1 },
@@ -124,6 +142,11 @@ export default function BulkDealAnalyticsPage() {
     return `₹${value.toFixed(0)} Cr`;
   }
 
+  function formatPrice(value: number): string {
+    if (!value || value === 0) return 'Not found';
+    return `₹${value.toFixed(2)}`;
+  }
+
   async function fetchAnalyticsData() {
     setLoading(true);
     try {
@@ -133,13 +156,36 @@ export default function BulkDealAnalyticsPage() {
         return;
       }
 
-      const response = await fetch(
-        `/api/fetchBulkBlockDeals?optionType=bulk_deals&from=${from}&to=${to}`
-      );
-      const data = await response.json();
+      let allDeals: DealData[] = [];
+      let allMarketCapData: Record<string, number> = {};
+      let allPriceData: Record<string, number> = {};
 
-      if (data.data) {
-        const aggregated = aggregateDealsData(data.data, data.marketCapData || {}, data.askPriceData || {});
+      if (dealType === 'both') {
+        // Fetch both bulk and block deals
+        const [bulkResponse, blockResponse] = await Promise.all([
+          fetch(`/api/fetchBulkBlockDeals?optionType=bulk_deals&from=${from}&to=${to}`),
+          fetch(`/api/fetchBulkBlockDeals?optionType=block_deals&from=${from}&to=${to}`)
+        ]);
+        
+        const bulkData = await bulkResponse.json();
+        const blockData = await blockResponse.json();
+        
+        allDeals = [...(bulkData.data || []), ...(blockData.data || [])];
+        allMarketCapData = { ...(bulkData.marketCapData || {}), ...(blockData.marketCapData || {}) };
+        allPriceData = { ...(bulkData.priceData || {}), ...(blockData.priceData || {}) };
+      } else {
+        const response = await fetch(
+          `/api/fetchBulkBlockDeals?optionType=${dealType}&from=${from}&to=${to}`
+        );
+        const data = await response.json();
+        
+        allDeals = data.data || [];
+        allMarketCapData = data.marketCapData || {};
+        allPriceData = data.priceData || {};
+      }
+
+      if (allDeals.length > 0) {
+        const aggregated = aggregateDealsData(allDeals, allMarketCapData, allPriceData, {});
         setAnalyticsData(aggregated);
       }
     } catch (error) {
@@ -149,7 +195,7 @@ export default function BulkDealAnalyticsPage() {
     }
   }
 
-  function aggregateDealsData(deals: DealData[], marketCapData: { [key: string]: number } = {}, askPriceData: { [key: string]: number } = {}): AggregatedData[] {
+  function aggregateDealsData(deals: DealData[], marketCapData: { [key: string]: number } = {}, priceData: { [key: string]: number } = {}, askPriceData: { [key: string]: number } = {}): AggregatedData[] {
     const grouped = deals.reduce((acc, deal) => {
       const key = deal.BD_SYMBOL;
       if (!acc[key]) {
@@ -202,6 +248,7 @@ export default function BulkDealAnalyticsPage() {
       minPrice: Math.min(...item.prices),
       maxPrice: Math.max(...item.prices),
       marketCap: marketCapData[item.symbol] || 0,
+      price: priceData[item.symbol] || 0,
       askPrice: askPriceData[item.symbol] || 0,
       deals: item.deals.sort((a: DealData, b: DealData) => b.BD_QTY_TRD - a.BD_QTY_TRD)
     }));
@@ -308,6 +355,62 @@ export default function BulkDealAnalyticsPage() {
     return clientData.sort((a, b) => Math.abs(b.totalValue) - Math.abs(a.totalValue));
   }
 
+  function aggregateDateDataForSymbol(deals: DealData[], symbol: string): DateAggregatedData[] {
+    const symbolDeals = deals.filter(deal => deal.BD_SYMBOL === symbol);
+    const grouped = symbolDeals.reduce((acc, deal) => {
+      const key = deal.BD_DT_DATE;
+      if (!acc[key]) {
+        acc[key] = {
+          date: deal.BD_DT_DATE,
+          symbol: deal.BD_SYMBOL,
+          companyName: deal.BD_SCRIP_NAME,
+          totalBought: 0,
+          totalSold: 0,
+          totalValueBought: 0,
+          totalValueSold: 0,
+          netPosition: 0,
+          netValue: 0,
+          dealCount: 0,
+          uniqueClients: new Set(),
+          deals: []
+        };
+      }
+
+      const dealValue = deal.BD_QTY_TRD * deal.BD_TP_WATP;
+
+      if (deal.BD_BUY_SELL === 'BUY') {
+        acc[key].totalBought += deal.BD_QTY_TRD;
+        acc[key].totalValueBought += dealValue;
+      } else {
+        acc[key].totalSold += deal.BD_QTY_TRD;
+        acc[key].totalValueSold += dealValue;
+      }
+
+      acc[key].uniqueClients.add(deal.BD_CLIENT_NAME);
+      acc[key].deals.push(deal);
+      acc[key].dealCount++;
+
+      return acc;
+    }, {} as any);
+
+    const dateData = Object.values(grouped).map((item: any) => ({
+      date: item.date,
+      symbol: item.symbol,
+      companyName: item.companyName,
+      totalBought: item.totalBought,
+      totalSold: item.totalSold,
+      totalValueBought: item.totalValueBought,
+      totalValueSold: item.totalValueSold,
+      netPosition: item.totalBought - item.totalSold,
+      netValue: item.totalValueBought - item.totalValueSold,
+      dealCount: item.dealCount,
+      uniqueClients: item.uniqueClients.size,
+      deals: item.deals.sort((a: DealData, b: DealData) => b.BD_QTY_TRD - a.BD_QTY_TRD)
+    }));
+
+    return dateData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
   function getSortIcon(field: SortField) {
     if (sortField !== field) return <FaSort className="opacity-50" />;
     return sortDirection === 'asc' ? <FaSortUp /> : <FaSortDown />;
@@ -315,7 +418,7 @@ export default function BulkDealAnalyticsPage() {
 
   useEffect(() => {
     fetchAnalyticsData();
-  }, [dateFilter]);
+  }, [dateFilter, dealType]);
 
   const sortedData = getSortedData();
   const { fromDisplay, toDisplay } = getDateRange();
@@ -330,7 +433,7 @@ export default function BulkDealAnalyticsPage() {
         <div className="flex justify-between items-center mb-3">
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Bulk Deal Analytics
+              Deal Analytics
             </h1>
             <div className="text-xs text-gray-600 dark:text-gray-400 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded px-2 py-1 inline-block mt-1">
               📊 {fromDisplay} to {toDisplay}
@@ -346,8 +449,19 @@ export default function BulkDealAnalyticsPage() {
           </button>
         </div>
 
-        {/* Ultra Compact Date Filters */}
+        {/* Ultra Compact Filters */}
         <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-lg shadow-sm border border-white/20">
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">📊</span>
+          <select
+            value={dealType}
+            onChange={(e) => setDealType(e.target.value as DealType)}
+            className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+          >
+            <option value="bulk_deals">Bulk Deals</option>
+            <option value="block_deals">Block Deals</option>
+            <option value="both">Both</option>
+          </select>
+
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">📅</span>
           {dateFilters.map((filter) => (
             <button
@@ -459,6 +573,15 @@ export default function BulkDealAnalyticsPage() {
                   </th>
                   <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     <button
+                      onClick={() => handleSort('price')}
+                      className="flex items-center space-x-1 hover:text-blue-600"
+                    >
+                      <span>PRICE</span>
+                      {getSortIcon('price')}
+                    </button>
+                  </th>
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
+                    <button
                       onClick={() => handleSort('askPrice')}
                       className="flex items-center space-x-1 hover:text-blue-600"
                     >
@@ -528,6 +651,9 @@ export default function BulkDealAnalyticsPage() {
                         {formatMarketCap(row.marketCap)}
                       </td>
                       <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
+                        {formatPrice(row.price)}
+                      </td>
+                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
                         {row.askPrice > 0 ? `₹${row.askPrice.toFixed(1)}` : 'N/A'}
                       </td>
                       <td className="px-2 py-2 text-xs text-green-600 dark:text-green-400">
@@ -566,10 +692,11 @@ export default function BulkDealAnalyticsPage() {
                     {/* Expanded Details */}
                     {expandedRows.has(row.symbol) && (
                       <tr>
-                        <td colSpan={11} className="px-2 py-3 bg-gray-50 dark:bg-gray-800">
+                        <td colSpan={12} className="px-2 py-3 bg-gray-50 dark:bg-gray-800">
                           <div className="space-y-2">
                             <div className="flex flex-wrap gap-4 text-xs text-gray-600 dark:text-gray-400 mb-3">
                               <span>🏢 Market Cap: <strong>{formatMarketCap(row.marketCap)}</strong></span>
+                              <span>💰 Price: <strong>{formatPrice(row.price)}</strong></span>
                               <span>💰 Ask Price: <strong>{row.askPrice > 0 ? `₹${row.askPrice.toFixed(1)}` : 'N/A'}</strong></span>
                               <span>👥 Clients: <strong>{row.uniqueClients}</strong></span>
                               <span>📊 Avg Deal: <strong>{formatNumber(Math.round(row.avgDealSize))}</strong></span>
@@ -598,6 +725,16 @@ export default function BulkDealAnalyticsPage() {
                                 }`}
                               >
                                 👥 Client Aggregated
+                              </button>
+                              <button
+                                onClick={() => setExpandedViewModeForSymbol(row.symbol, 'dates')}
+                                className={`px-2 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                                  getExpandedViewMode(row.symbol) === 'dates'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                                }`}
+                              >
+                                📅 Date Aggregated
                               </button>
                             </div>
 
@@ -648,7 +785,7 @@ export default function BulkDealAnalyticsPage() {
                                   </table>
                                 </div>
                               </>
-                            ) : (
+                            ) : getExpandedViewMode(row.symbol) === 'clients' ? (
                               <>
                                 <div className="flex justify-between items-center mb-2">
                                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Client Aggregated Data</span>
@@ -684,6 +821,65 @@ export default function BulkDealAnalyticsPage() {
                                           </td>
                                           <td className="py-1 px-2">
                                             {clientData.dealCount}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Date Aggregated Data</span>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full text-xs">
+                                    <thead>
+                                      <tr className="border-b border-gray-300 dark:border-gray-600">
+                                        <th className="text-left py-1 px-2 font-medium">Date</th>
+                                        <th className="text-left py-1 px-2 font-medium">Qty Bought</th>
+                                        <th className="text-left py-1 px-2 font-medium">Qty Sold</th>
+                                        <th className="text-left py-1 px-2 font-medium">Net Qty</th>
+                                        <th className="text-left py-1 px-2 font-medium">Value Bought</th>
+                                        <th className="text-left py-1 px-2 font-medium">Value Sold</th>
+                                        <th className="text-left py-1 px-2 font-medium">Net Value</th>
+                                        <th className="text-left py-1 px-2 font-medium">Deals</th>
+                                        <th className="text-left py-1 px-2 font-medium">Clients</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {aggregateDateDataForSymbol(row.deals, row.symbol).map((dateData, index) => (
+                                        <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
+                                          <td className="py-1 px-2">{dateData.date}</td>
+                                          <td className="py-1 px-2 text-green-600">
+                                            {formatNumber(dateData.totalBought)}
+                                          </td>
+                                          <td className="py-1 px-2 text-red-600">
+                                            {formatNumber(dateData.totalSold)}
+                                          </td>
+                                          <td className={`py-1 px-2 font-medium ${
+                                            dateData.netPosition > 0 ? 'text-green-600' : 'text-red-600'
+                                          }`}>
+                                            {dateData.netPosition > 0 ? '+' : ''}{formatNumber(dateData.netPosition)}
+                                          </td>
+                                          <td className="py-1 px-2 text-green-600">
+                                            ₹{(dateData.totalValueBought / 10000000).toFixed(2)}Cr
+                                          </td>
+                                          <td className="py-1 px-2 text-red-600">
+                                            ₹{(dateData.totalValueSold / 10000000).toFixed(2)}Cr
+                                          </td>
+                                          <td className={`py-1 px-2 font-medium ${
+                                            dateData.netValue > 0 ? 'text-green-600' : 'text-red-600'
+                                          }`}>
+                                            ₹{(Math.abs(dateData.netValue) / 10000000).toFixed(2)}Cr
+                                          </td>
+                                          <td className="py-1 px-2">
+                                            {dateData.dealCount}
+                                          </td>
+                                          <td className="py-1 px-2">
+                                            {dateData.uniqueClients}
                                           </td>
                                         </tr>
                                       ))}

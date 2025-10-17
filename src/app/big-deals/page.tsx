@@ -12,10 +12,11 @@ export default function BigDealsPage() {
     { key: "BD_SYMBOL", label: "SYMBOL" },
     { key: "BD_SCRIP_NAME", label: "COMPANY NAME" },
     { key: "MARKET_CAP", label: "MARKET CAP (Cr)" },
+    { key: "PRICE", label: "STOCK PRICE" },
     { key: "BD_CLIENT_NAME", label: "CLIENT NAME" },
     { key: "BD_BUY_SELL", label: "BUY/SELL" },
     { key: "BD_QTY_TRD", label: "QUANTITY" },
-    { key: "BD_TP_WATP", label: "PRICE" },
+    { key: "BD_TP_WATP", label: "DEAL PRICE" },
     { key: "BD_REMARKS", label: "REMARKS" },
   ];
 
@@ -105,10 +106,14 @@ export default function BigDealsPage() {
       const data = await response.json();
       console.log('Bulk/Block deals data:', data);
       const marketCapMap = (data && data.marketCapData) ? data.marketCapData : {};
+      const priceMap = (data && data.priceData) ? data.priceData : {};
       const enrichedRows = (data && Array.isArray(data.data)) ? data.data.map((row: any) => ({
         ...row,
         MARKET_CAP: (row && row.BD_SYMBOL && marketCapMap[row.BD_SYMBOL] !== undefined)
           ? marketCapMap[row.BD_SYMBOL]
+          : 'Not found',
+        PRICE: (row && row.BD_SYMBOL && priceMap[row.BD_SYMBOL] !== undefined)
+          ? priceMap[row.BD_SYMBOL]
           : 'Not found'
       })) : [];
       setDealsData({ ...data, data: enrichedRows });
