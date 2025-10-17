@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { FaSyncAlt } from 'react-icons/fa';
 import Navigation from '@/app/component/Navigation';
 import Documentation from '@/app/component/Documentation';
-import SimpleTable from '@/app/component/SimpleTable';
 
 export default function BigDealsPage() {
   const bulk_deals_columns = [
