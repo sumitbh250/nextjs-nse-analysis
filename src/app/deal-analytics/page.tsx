@@ -559,7 +559,7 @@ export default function DealAnalyticsPage() {
                       {getSortIcon('symbol')}
                     </button>
                   </th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 max-w-[120px]">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     COMPANY
                   </th>
                   <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
@@ -644,7 +644,7 @@ export default function DealAnalyticsPage() {
                       <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100">
                         {row.symbol}
                       </td>
-                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[120px] truncate" title={row.companyName}>
+                      <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate" title={row.companyName}>
                         {row.companyName}
                       </td>
                       <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
@@ -768,7 +768,7 @@ export default function DealAnalyticsPage() {
                                       {(showAllDeals.has(row.symbol) ? row.deals : row.deals.slice(0, 5)).map((deal, index) => (
                                         <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
                                           <td className="py-1 px-2">{deal.BD_DT_DATE}</td>
-                                          <td className="py-1 px-2 max-w-[100px] truncate" title={deal.BD_CLIENT_NAME}>
+                                          <td className="py-1 px-2 max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate" title={deal.BD_CLIENT_NAME}>
                                             {deal.BD_CLIENT_NAME}
                                           </td>
                                           <td className={`py-1 px-2 font-medium ${
@@ -805,7 +805,7 @@ export default function DealAnalyticsPage() {
                                     <tbody>
                                       {aggregateClientDataForSymbol(row.deals, row.symbol).map((clientData, index) => (
                                         <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
-                                          <td className="py-1 px-2 max-w-[150px] truncate" title={clientData.clientName}>
+                                          <td className="py-1 px-2 max-w-[150px] sm:max-w-[200px] md:max-w-[250px] lg:max-w-[300px] xl:max-w-[350px] truncate" title={clientData.clientName}>
                                             {clientData.clientName}
                                           </td>
                                           <td className={`py-1 px-2 font-medium ${

@@ -205,12 +205,12 @@ export default function UndervaluedEtfsPage() {
                   {sortedEtfData.map((etf, index) => (
                     <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100" title={etf.symbol}>
-                        <div className="max-w-[60px] truncate">
+                        <div className="max-w-[60px] sm:max-w-[80px] md:max-w-[100px] lg:max-w-[120px] xl:max-w-[150px] truncate">
                           {etf.symbol}
                         </div>
                       </td>
                       <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300" title={etf.companyName}>
-                        <div className="max-w-[120px] truncate">
+                        <div className="max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate">
                           {etf.companyName}
                         </div>
                       </td>
@@ -332,12 +332,12 @@ export default function UndervaluedEtfsPage() {
                 {sortedEtfData.map((etf, index) => (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100" title={etf.symbol}>
-                      <div className="max-w-[60px] truncate">
+                      <div className="max-w-[60px] sm:max-w-[80px] md:max-w-[100px] lg:max-w-[120px] xl:max-w-[150px] truncate">
                         {etf.symbol}
                       </div>
                     </td>
                     <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300" title={etf.companyName}>
-                      <div className="max-w-[120px] truncate">
+                      <div className="max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate">
                         {etf.companyName}
                       </div>
                     </td>

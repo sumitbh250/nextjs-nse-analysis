@@ -488,7 +488,7 @@ export default function ClientAnalyticsPage() {
                 {sortedData.map((client) => (
                   <React.Fragment key={client.clientName}>
                     <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100 max-w-[150px] truncate" title={client.clientName}>
+                      <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100 max-w-[150px] sm:max-w-[200px] md:max-w-[250px] lg:max-w-[300px] xl:max-w-[350px] truncate" title={client.clientName}>
                         <FaUser className="inline mr-1" size={10} />
                         {client.clientName}
                       </td>
@@ -598,7 +598,7 @@ export default function ClientAnalyticsPage() {
                                       {(showAllStocks.has(client.clientName) ? client.stockData : client.stockData.slice(0, 5)).map((stock, index) => (
                                         <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
                                           <td className="py-1 px-2 font-medium">{stock.symbol}</td>
-                                          <td className="py-1 px-2 max-w-[120px] truncate" title={stock.companyName}>{stock.companyName}</td>
+                                          <td className="py-1 px-2 max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate" title={stock.companyName}>{stock.companyName}</td>
                                           <td className={`py-1 px-2 font-medium ${
                                             stock.totalShares > 0 ? 'text-green-600' : 'text-red-600'
                                           }`}>
@@ -648,7 +648,7 @@ export default function ClientAnalyticsPage() {
                                         <tr key={index} className="border-b border-gray-200 dark:border-gray-700">
                                           <td className="py-1 px-2">{deal.BD_DT_DATE}</td>
                                           <td className="py-1 px-2 font-medium">{deal.BD_SYMBOL}</td>
-                                          <td className="py-1 px-2 max-w-[100px] truncate" title={deal.BD_SCRIP_NAME}>
+                                          <td className="py-1 px-2 max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate" title={deal.BD_SCRIP_NAME}>
                                             {deal.BD_SCRIP_NAME}
                                           </td>
                                           <td className={`py-1 px-2 font-medium ${

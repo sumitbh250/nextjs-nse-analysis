@@ -495,7 +495,7 @@ export default function ClientStockAnalyticsPage() {
                       {getSortIcon('symbol')}
                     </button>
                   </th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100 max-w-[120px]">
+                  <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
                     COMPANY
                   </th>
                   <th className="px-2 py-2 text-left text-xs font-semibold text-gray-900 dark:text-gray-100">
@@ -573,14 +573,14 @@ export default function ClientStockAnalyticsPage() {
                   return (
                     <React.Fragment key={rowKey}>
                       <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100 max-w-[120px] truncate" title={row.clientName}>
+                        <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100 max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate" title={row.clientName}>
                           <FaUser className="inline mr-1" size={10} />
                           {row.clientName}
                         </td>
                         <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100">
                           {row.symbol}
                         </td>
-                        <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[120px] truncate" title={row.companyName}>
+                        <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate" title={row.companyName}>
                           {row.companyName}
                         </td>
                         <td className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300">
@@ -674,7 +674,7 @@ export default function ClientStockAnalyticsPage() {
                                         <td className="py-1 px-2">{formatNumber(deal.BD_QTY_TRD)}</td>
                                         <td className="py-1 px-2">₹{deal.BD_TP_WATP.toFixed(1)}</td>
                                         <td className="py-1 px-2">₹{((deal.BD_QTY_TRD * deal.BD_TP_WATP) / 10000000).toFixed(2)}Cr</td>
-                                        <td className="py-1 px-2 max-w-[100px] truncate" title={deal.BD_REMARKS}>
+                                        <td className="py-1 px-2 max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate" title={deal.BD_REMARKS}>
                                           {deal.BD_REMARKS || '-'}
                                         </td>
                                       </tr>

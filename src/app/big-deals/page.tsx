@@ -289,9 +289,9 @@ export default function BigDealsPage() {
                          className="px-2 py-2 text-xs text-gray-700 dark:text-gray-300"
                          title={typeof row[column.key] === 'string' && row[column.key].length > 20 ? row[column.key] : undefined}
                        >
-                         <div className="max-w-[120px] truncate">
-                           {row[column.key]}
-                         </div>
+                        <div className="max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-[300px] truncate">
+                          {row[column.key]}
+                        </div>
                        </td>
                      ))}
                    </tr>
